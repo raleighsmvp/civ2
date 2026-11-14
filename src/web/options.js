@@ -78,6 +78,9 @@ export function readChoices(spec, ini) {
     const c = {};
     c.classic = get('Mode').toLowerCase() === 'classic';
     c.hd = get('Graphics').toLowerCase() === 'hd';
+    // sharp text and interface: SharpText=, else on but in Classic
+    c.sharpSet = get('SharpText') !== '';
+    c.sharp = c.sharpSet ? getInt('SharpText', 0) !== 0 : !c.classic;
     c.rule = spec.rules.map((r) => getInt(r.key, 0) !== 0);
     c.extra = spec.extras.map((x) => getInt(x.key, x.key === 'HotkeyUnderlines' ? 0 : 1) !== 0);
     let year = getInt('RetirementYear', 0);
@@ -104,6 +107,8 @@ export function changedChoices(spec, c, old) {
         put('Mode', c.classic ? 'Classic' : 'Standard');
     if (c.hd !== old.hd)
         put('Graphics', c.hd ? 'HD' : 'Standard');
+    if (c.sharpSet && (c.sharp !== old.sharp || !old.sharpSet))
+        put('SharpText', c.sharp ? 1 : 0);
     spec.rules.forEach((r, i) => c.rule[i] !== old.rule[i] && put(r.key, c.rule[i] ? 1 : 0));
     spec.extras.forEach((x, i) => c.extra[i] !== old.extra[i] && put(x.key, c.extra[i] ? 1 : 0));
     const [retire, warnL] = spec.limits;

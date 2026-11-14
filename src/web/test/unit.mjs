@@ -300,5 +300,14 @@ assert.equal(hdWanted(ini0, ''), 0);
 assert.equal(hdWanted(ini0, '3'), 3);
 assert.equal(hdWanted(ini1, '0'), -1);
 assert.equal(hdWanted(iniSet(ini1, 'OpenCiv2', 'Mode', 'Classic'), '2'), -1);
+// sharp text and interface: on by default, but in Classic; written once chosen
+assert.equal(c0.sharp, true);
+assert.equal(c0.sharpSet, false);
+assert.equal(readChoices(spec, iniSet('', 'OpenCiv2', 'Mode', 'Classic')).sharp, false);
+assert.equal(readChoices(spec, iniSet(iniSet('', 'OpenCiv2', 'Mode', 'Classic'), 'OpenCiv2', 'SharpText', '1')).sharp, true);
+const c2 = {...structuredClone(c0), sharp: false, sharpSet: true};
+assert.deepEqual(changedChoices(spec, c2, c0), [['SharpText', '0']]);
+assert.deepEqual(readChoices(spec, writeChoices(spec, '', c2, c0)), c2);
+assert.deepEqual(changedChoices(spec, {...structuredClone(c0), classic: true, sharp: false}, c0), [['Mode', 'Classic']]);
 
 console.log('src/web unit tests passed');

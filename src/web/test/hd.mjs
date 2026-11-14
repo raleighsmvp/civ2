@@ -6,7 +6,9 @@
 // kept in IndexedDB, HD graphics switched on in CIV.INI; then the game at a
 // device pixel ratio of 2 (density Auto: 2), the menu and a saved game's map
 // drawn in HD (the canvas twice the desktop's size, and not the desktop's
-// pixels enlarged); then ?hd=0: the original graphics.  Screenshots in
+// pixels enlarged), the menu bar's text sharp from the first screen; then
+// ?hd=0: sharp text and interface (on by default) without the art; then
+// ?hd=0&sharp=0: the original graphics.  Screenshots in
 // run/web-hd (look at them).  Without the art (or the game) it says so and
 // passes.
 //
@@ -110,11 +112,19 @@ async function main() {
     // the canvas's size against the desktop's (its CSS size in device
     // pixels: the device pixel ratio 2), and the share of its 2x2 blocks
     // that are not one colour (the desktop's pixels enlarged twice: none)
-    const canvasState = () => evaluate(`(() => { const c = document.getElementById("screen");
+    // (box: that part of it only, [left, top, right, bottom] as fractions:
+    // the middle, where the first screen's dialog is, its text drawn sharp
+    // rather than enlarged)
+    // (the first screen: the heralds' question the first time, in the
+    // middle, else the main menu, at the bottom right)
+    const MIDDLE = [0.3, 0.35, 0.7, 0.65], MENU = [0.68, 0.53, 0.94, 0.95];
+    const firstScreen = async () => Math.max((await canvasState(MIDDLE)).mixed, (await canvasState(MENU)).mixed);
+    const canvasState = (box = [0, 0, 1, 1]) => evaluate(`(() => { const c = document.getElementById("screen");
         const r = c.getBoundingClientRect(), d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+        const [x0, y0, x1, y1] = ${JSON.stringify(box)}.map((f, i) => Math.floor(f * (i & 1 ? c.height : c.width) / 2) * 2);
         let blocks = 0, mixed = 0;
-        for (let y = 0; y + 1 < c.height; y += 2)
-            for (let x = 0; x + 1 < c.width; x += 2) {
+        for (let y = y0; y + 1 < y1; y += 2)
+            for (let x = x0; x + 1 < x1; x += 2) {
                 const a = (y * c.width + x) * 4, b = a + 4, e = a + c.width * 4, f = e + 4;
                 blocks++;
                 for (let k = 0; k < 3; k++)
@@ -204,6 +214,11 @@ async function main() {
             throw new Error('the canvas is not at the density 2');
         if (st.rendering === 'auto')
             throw new Error('the canvas is smoothed where it is shown at its own pixels');
+        // the text sharp from the first screen (a dialog, before a game)
+        const first = await firstScreen();
+        log('the first screen\'s text: ' + first.toFixed(3));
+        if (first < 0.05)
+            throw new Error('the text is not sharp on the first screen');
         await loadMap();
         st = await canvasState();
         const stats = await evaluate('window.civ2Stats');
@@ -213,17 +228,34 @@ async function main() {
         await shot('02-map');
         if (st.mixed < 0.05)
             throw new Error('the map is not drawn in HD (the desktop\'s pixels enlarged)');
-        // ?hd=0: the original graphics, as natively --hd=0
+        // ?hd=0: the original graphics, as natively --hd=0, with sharp
+        // text and interface (on by default): the planes without the art
         await send('Page.navigate', {url: url + '?hd=0'});
+        await waitFor('window.civ2Status && /Starting/.test(window.civ2Status)', 60000, 'the start without HD');
+        await waitFor('(window.civ2Stats || {}).hdFrames > 0', 60000, 'a sharp frame');
+        await settle(3000, 60000);
+        st = await canvasState();
+        const text = await firstScreen();
+        log('sharp: ' + JSON.stringify(st) + ', the first screen\'s text: ' + text.toFixed(3));
+        await shot('03-sharp-menu');
+        if (st.w !== st.cssW * 2 || text < 0.05)
+            throw new Error('the text is not sharp (SharpText, by default)');
+        await loadMap();
+        const sharp = await evaluate('window.civ2Stats');
+        log(`sharp frames: ${sharp.hdFrames}, ${(sharp.hdMs / sharp.hdFrames).toFixed(1)} ms each to show; ` +
+            `the module's memory ${Math.round(sharp.memoryBytes / 1e6)} MB`);
+        await shot('04-sharp-map');
+        // ?hd=0&sharp=0: the original's look, the desktop's pixels enlarged
+        await send('Page.navigate', {url: url + '?hd=0&sharp=0'});
         await waitFor('window.civ2Status && /Starting/.test(window.civ2Status)', 60000, 'the start without HD');
         await settle(3000, 60000);
         await loadMap();
         st = await canvasState();
-        log('?hd=0: ' + JSON.stringify(st) + `; the module's memory ${Math.round((await evaluate('window.civ2Stats')).memoryBytes / 1e6)} MB`);
-        await shot('03-hd-off');
+        log('?hd=0&sharp=0: ' + JSON.stringify(st) + `; the module's memory ${Math.round((await evaluate('window.civ2Stats')).memoryBytes / 1e6)} MB`);
+        await shot('05-hd-off');
         // (the desktop at the device's 2 pixels each: its canvas half the shown size)
         if (st.w !== st.cssW || (await evaluate('window.civ2Stats')).hdFrames)
-            throw new Error('?hd=0 is not the original graphics');
+            throw new Error('?hd=0&sharp=0 is not the original graphics');
         if (errors.length)
             throw new Error('the page threw');
         log('ok: ' + OUT);

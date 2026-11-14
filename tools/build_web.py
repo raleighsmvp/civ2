@@ -122,6 +122,7 @@ def choices():
         'standard': text(r'"Standard",\s*("(?:[^"\\]|\\.)*")'),
         'classic': text(r'"Classic",\s*("(?:[^"\\]|\\.)*")'),
         'hd': text(r'"HD graphics",\s*("(?:[^"\\]|\\.)*")'),
+        'sharp': text(r'"Sharp text and interface",\s*("(?:[^"\\]|\\.)*")'),
         'rulesIntro': text(r'add\(T_TEXT, PAGE_RULES,[^"]*("(?:[^"\\]|\\.)*"(?:\s*"(?:[^"\\]|\\.)*")*)'),
         'limitsNote': text(r'"Limits"\);\s*add\(T_TEXT, PAGE_RULES,[^"]*("(?:[^"\\]|\\.)*")'),
         'uiIntro': text(r'add\(T_TEXT, PAGE_UI,[^"]*("(?:[^"\\]|\\.)*"(?:\s*"(?:[^"\\]|\\.)*")*)'),

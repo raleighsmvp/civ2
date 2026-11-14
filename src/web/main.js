@@ -324,6 +324,7 @@ function optionsRender() {
         return;
     for (const r of document.querySelectorAll('input[name=mode]'))
         r.checked = +r.value === (now.classic ? 1 : 0);
+    $('opt-sharp').checked = now.sharp;
     $('opt-hd').checked = now.hd;
     $('opt-hd').disabled = now.classic || !!opt.fetching;
     $('opt-rules').disabled = $('opt-ui').disabled = now.classic;
@@ -441,6 +442,7 @@ async function showOptions(store) {
         $('note-standard').textContent = spec.standard;
         $('note-classic').textContent = spec.classic;
         $('note-hd').textContent = spec.hd;
+        $('note-sharp').textContent = spec.sharp;
         $('note-rules').textContent = spec.rulesIntro;
         $('note-limits').textContent = spec.limitsNote;
         $('note-ui').textContent = spec.uiIntro;
@@ -496,8 +498,15 @@ async function showOptions(store) {
         for (const r of document.querySelectorAll('input[name=mode]'))
             r.onchange = () => {
                 opt.now.classic = +r.value === 1;
+                if (!opt.now.sharpSet)
+                    opt.now.sharp = !opt.now.classic;   // (by default: not in Classic)
                 optionsChanged();
             };
+        $('opt-sharp').onchange = () => {
+            opt.now.sharp = $('opt-sharp').checked;
+            opt.now.sharpSet = true;
+            optionsChanged();
+        };
         $('opt-hd').onchange = () => {
             opt.now.hd = $('opt-hd').checked;
             optionsChanged();
@@ -555,6 +564,9 @@ async function play(store) {
     const query = new URLSearchParams(location.search), args = ['civ2', GAME];
     if (query.has('hd'))
         args.push('--hd=' + (query.get('hd') || '1'));
+    // (sharp text and interface: ?sharp=0 off, as --sharp=0; else CIV.INI's)
+    if (query.has('sharp'))
+        args.push('--sharp=' + (query.get('sharp') || '1'));
     window.civ2Hd = null;
     if (hdWanted(iniOf(entries).text, query.get('hd')) >= 0) {
         const t = performance.now();

@@ -50,7 +50,7 @@ Music plays where the game's folder has it (`Music/TrackNN.ogg`).
 
 The desktop version asks how to play in its opening window ([EXTRAS.md](EXTRAS.md#the-opening-window));
 the browser version asks on its `?setup` page, under *How to play*, once the game files are there:
-the mode (Standard or Classic), HD graphics, the rule changes and limits, and the
+the mode (Standard or Classic), sharp text and interface, HD graphics, the rule changes and limits, and the
 interface additions with the colour correction and the messages shown on the map, with the opening
 window's own texts. They are kept as soon as they are changed, in the game's `CIV.INI` (`[OpenCiv2]`,
 the same keys as natively) in the browser's storage, and take effect the next time the game starts.
@@ -83,9 +83,16 @@ as `--hd` does natively. The page has no density choice: it is *Auto* (unless `C
 `GraphicsDensity=` under `[OpenCiv2]`, or `?hd=N` asks), the device's own pixels: on a screen with a device
 pixel ratio of 2 the map is drawn at twice the desktop's pixels and shown pixel for pixel.
 
+*Sharp text and interface* ([EXTRAS.md](EXTRAS.md#sharp-text-and-interface); on by default in
+Standard mode, `SharpText=` in `CIV.INI`) works the same way without the art: on a screen with a
+device pixel ratio of 2 or more the canvas is the device's pixels, its text, menus and controls
+drawn at that resolution, the pictures enlarged.  `?sharp=0` (or `?sharp=1`) in the address
+switches it for that visit, as `--sharp=0` natively.
+
 What it takes: the game gets only the pictures it draws (65 MB of the pack's 250 MB, loaded from
 the storage in about 0.3 s); the module's memory was 175 MB on a saved game's map at density 2 (87 MB
-without); showing a 2560x1600 frame takes about 10 ms (Chrome, this machine).
+without, 179 MB with sharp text alone); showing a 2560x1600 frame takes about 10 ms (Chrome, this
+machine).
 
 ## Saved games
 
