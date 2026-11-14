@@ -371,8 +371,6 @@ static int enabled(const Item *it)
         return it->choice == PAGE_GAME || !now.classic;
     if (it->value == &now.hd)
         return !now.classic && !fetch_running();
-    if (it->value == &now.density)
-        return !now.classic && now.hd;
     if (it->type == T_BUTTON && it->choice == B_PLAY)
         return !fetch_running();
     if (it->type == T_BUTTON && it->choice == B_DOWNLOAD)
@@ -586,18 +584,12 @@ static void build(void)
     add(T_HEAD, PAGE_GAME, x, y, 300, 22, "Graphics");
     add_check(PAGE_GAME, x, y + 26, 520, "HD graphics",
               "New art for the map, at the screen's full resolution.", &now.hd);
-    add(T_TEXT, PAGE_GAME, x + 22, y + 68, 70, 20, "Density:")->small = 1;
-    for (i = 0; i <= 4; i++) {
-        static const char *const names[5] = {"Auto", "1", "2", "3", "4"};
-        it = add(T_RADIO, PAGE_GAME, x + 84 + (i ? 60 + (i - 1) * 46 : 0), y + 66, i ? 40 : 56, 19, names[i]);
-        it->value = &now.density;
-        it->choice = i;
-        it->small = 1;
-    }
-    SetRect(&status_rect, x + 22, y + 92, LW - 30, y + 126);
-    add_button(PAGE_GAME, LW - 130, y + 92, 100, "Download", B_DOWNLOAD);
-    add_button(PAGE_GAME, x + 340, y + 106, 80, "Stop", B_STOP);
-    y += 136;
+    /* (the density: always the screen's, Auto; GraphicsDensity= in CIV.INI
+       and --hd=N still choose one, for tests) */
+    SetRect(&status_rect, x + 22, y + 66, LW - 30, y + 100);
+    add_button(PAGE_GAME, LW - 130, y + 66, 100, "Download", B_DOWNLOAD);
+    add_button(PAGE_GAME, x + 340, y + 80, 80, "Stop", B_STOP);
+    y += 110;
     add_check(PAGE_GAME, x, y, 520, "Full screen", "Instead of a window filling the screen.", &now.fullscreen);
     if (L.override_text[0])
         add(T_TEXT, PAGE_GAME, x, y + 42, LW - 60, 18, L.override_text)->small = 1;

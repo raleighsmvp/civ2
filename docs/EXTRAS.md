@@ -88,8 +88,8 @@ written) and take effect as the game starts.  Its pages:
 
 - **Game**: the mode, *Standard* (the original's bugs fixed, [BUGS.md](BUGS.md), and these
   additions) or *Classic* (the original game: its look, its bugs, none of these; `Mode=Classic`,
-  as `CIV2_CLASSIC=1`); [HD graphics](#hd-graphics) and their density (Auto or 1 to 4:
-  `Graphics=HD`, `GraphicsDensity=`), the art downloaded from there where it is not installed
+  as `CIV2_CLASSIC=1`); [HD graphics](#hd-graphics) (`Graphics=HD`, at the screen's own
+  density), the art downloaded from there where it is not installed
   (234 MB, with its progress and a Stop button; see [HD-GRAPHICS.md](HD-GRAPHICS.md)); full
   screen (`FullScreen=`).
 - **Rules**: the [rule changes](#rule-changes) and the limits, each with a line on what it does.

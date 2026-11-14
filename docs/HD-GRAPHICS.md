@@ -45,11 +45,11 @@ window"), which downloads and installs the art the first time (below), then Play
 
    `1` (and the bare `--hd`, and `Graphics=HD`) is on at the screen's own density; `N` from 2 to
    4 is on at that density; `0` is off (`--hd=0` turns it off whatever the environment or
-   `CIV.INI` say, `CIV2_HD=0` whatever `CIV.INI` says).  The density (Auto, 1 to 4 in the
-   opening window) is how many screen pixels
+   `CIV.INI` say, `CIV2_HD=0` whatever `CIV.INI` says).  The density (not a choice in the opening
+   window or the browser's set-up page: always the screen's) is how many screen pixels
    each of the game's pixels gets each way: by default the game's own scale (docs/EXTRAS.md,
    Screen scale), so on a 4K screen 3, on a 1920x1080 one 1 (the new art at the original's
-   size); `GraphicsDensity=N` (1 to 4) in `CIV.INI` sets it for the bare `--hd`, `CIV2_HD=1`
+   size); `GraphicsDensity=N` (1 to 4) in `CIV.INI`, for tests, sets it for the bare `--hd`, `CIV2_HD=1`
    and `Graphics=HD`.  It takes effect the next time the game starts.  The portable build's
    set-up takes `--hd` out of its arguments (as `--fix-cue-gaps`) and passes it to the game
    as `CIV2_HD_ARG`.
