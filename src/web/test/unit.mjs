@@ -284,16 +284,16 @@ assert.deepEqual(c0.colour, ['100', '0', '0', '']);
 assert.deepEqual(changedChoices(spec, c0, c0), []);
 const c1 = structuredClone(c0);
 c1.hd = true;
-c1.density = 2;
 c1.rule[0] = true;
 c1.extra[1] = false;
 c1.limit[0] = '2100';           // the warning moves with the year
 c1.limit[3] = '50000';
-assert.deepEqual(changedChoices(spec, c1, c0), [['Graphics', 'HD'], ['GraphicsDensity', '2'], [spec.rules[0].key, '1'],
+assert.deepEqual(changedChoices(spec, c1, c0), [['Graphics', 'HD'], [spec.rules[0].key, '1'],
     [spec.extras[1].key, '0'], ['RetirementYear', '2100'], ['RetirementWarningYear', '2080'], ['GoldLimit', '50000']]);
 const ini1 = writeChoices(spec, ini0, c1, c0);
 assert.deepEqual(readChoices(spec, ini1), {...c1, limit: ['2100', '2080', '32000', '50000', '10000']});
-assert.equal(hdWanted(ini1, null), 2);
+assert.equal(hdWanted(ini1, null), 0);         // (the density: Auto, unless CIV.INI has GraphicsDensity=)
+assert.equal(hdWanted(iniSet(ini1, 'OpenCiv2', 'GraphicsDensity', '2'), null), 2);
 assert.equal(hdWanted(ini0, null), -1);
 assert.equal(hdWanted(ini0, '1'), 0);
 assert.equal(hdWanted(ini0, ''), 0);

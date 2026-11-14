@@ -21,8 +21,11 @@ Safari 16.4).
 
 ## Your copy of the game
 
-The first time, the page asks for your copy of Civilization II Multiplayer Gold Edition. Any of
-these can be chosen, or dropped on the page:
+The first time, the page asks for your copy of Civilization II Multiplayer Gold Edition: *Choose
+your game...* offers *A folder* (the installed game, or the CD) or *A file* (a `.zip` of the folder,
+or a disc image's `.cue` and `.bin`); any of them can be dropped on the page too. The page then says
+what was chosen (e.g. *Folder: Civ2 (412 files)*, *Disc image: CIV2.cue + CIV2.bin*) and how the
+copy is going. Any of these works:
 
 - **The installed game:** the folder it is installed in, or a `.zip` of that folder. A folder the
   desktop OpenCiv2 set up (`GameData`) works too, music included.
@@ -35,7 +38,8 @@ encodes the music tracks as Ogg Vorbis (`Music/TrackNN.ogg`); this takes a few m
 progress line and a Stop button. A mounted CD gives no music: browsers cannot read a CD's audio
 tracks, but a disc image has them.
 
-The game is copied into the browser's storage (IndexedDB), so later visits start the game at
+The game is copied into the browser's storage (IndexedDB), and never leaves your computer; your
+saved games are kept there too. Later visits start the game at
 once. The page asks the browser to keep that storage for good, so that it is not cleared when
 disk space runs low. `?setup` (`http://localhost:8000/?setup`) shows the set-up page again: to
 replace the game files or remove them.
@@ -46,7 +50,7 @@ Music plays where the game's folder has it (`Music/TrackNN.ogg`).
 
 The desktop version asks how to play in its opening window ([EXTRAS.md](EXTRAS.md#the-opening-window));
 the browser version asks on its `?setup` page, under *How to play*, once the game files are there:
-the mode (Standard or Classic), HD graphics and their density, the rule changes and limits, and the
+the mode (Standard or Classic), HD graphics, the rule changes and limits, and the
 interface additions with the colour correction and the messages shown on the map, with the opening
 window's own texts. They are kept as soon as they are changed, in the game's `CIV.INI` (`[OpenCiv2]`,
 the same keys as natively) in the browser's storage, and take effect the next time the game starts.
@@ -75,7 +79,8 @@ that should offer the art itself: `make web HD=1` copies the installed art (`mak
 licence beside it).
 
 `?hd=1` (or `?hd=N`, N the density 2 to 4) in the address turns them on for that visit, `?hd=0` off,
-as `--hd` does natively. The density *Auto* is the device's own pixels: on a screen with a device
+as `--hd` does natively. The page has no density choice: it is *Auto* (unless `CIV.INI` has
+`GraphicsDensity=` under `[OpenCiv2]`, or `?hd=N` asks), the device's own pixels: on a screen with a device
 pixel ratio of 2 the map is drawn at twice the desktop's pixels and shown pixel for pixel.
 
 What it takes: the game gets only the pictures it draws (65 MB of the pack's 250 MB, loaded from
@@ -102,7 +107,7 @@ the desktop version.
 A web page cannot open the game's TCP connections itself, so network games go through a small
 relay: `tools/webrelay.py` (Python 3, nothing else to install) bridges the page's WebSockets to
 TCP. Run it on the machine of the player who hosts, or on any machine the browsers can reach, and
-give the page its address on the `?setup` page, or in the address as `?relay=ws://HOST:8765`:
+give the page its address on the `?setup` page (*Network games' relay*; empty: none), or in the address as `?relay=ws://HOST:8765`:
 
 ```sh
 tools/webrelay.py                                        # browsers on this machine; join any game on the LAN

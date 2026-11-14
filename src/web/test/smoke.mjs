@@ -160,7 +160,7 @@ async function main() {
         await send('Page.enable');
         await send('Emulation.setDeviceMetricsOverride', {width: 1280, height: 800, deviceScaleFactor: 1, mobile: false});
         await send('Page.navigate', {url: url + '?setup'});
-        await waitFor('window.civ2Status', 10000, 'the page');
+        await waitFor('window.civ2Setup', 10000, 'the page');
         if (!REPLAY) {
             // the set-up from a disc image, a made-up one (disc.mjs: the
             // cabinet, the videos, two audio tracks), chosen as the player
@@ -169,7 +169,7 @@ async function main() {
             const disc = sampleDisc(), image = makeImage(disc.iso, [tone(3, 440), tone(2, 660)], 'Civ2.bin');
             writeFileSync(join(tmp, 'Civ2.cue'), image.cue);
             writeFileSync(join(tmp, 'Civ2.bin'), image.bin);
-            const {result: input} = await send('Runtime.evaluate', {expression: 'document.getElementById("image")'});
+            const {result: input} = await send('Runtime.evaluate', {expression: 'document.getElementById("files")'});
             await send('DOM.setFileInputFiles', {objectId: input.objectId, files: [join(tmp, 'Civ2.cue'), join(tmp, 'Civ2.bin')]});
             await waitFor('/set up from|failed|stopped|neither/.test(window.civ2Status) && window.civ2Status', 120000, 'the set-up');
             const said = await evaluate('window.civ2Status');
@@ -199,7 +199,7 @@ async function main() {
                 throw new Error('the music is not as the disc image has it');
             rmSync(join(tmp, 'Civ2.bin'));
         }
-        const {result} = await send('Runtime.evaluate', {expression: 'document.getElementById("zip")'});
+        const {result} = await send('Runtime.evaluate', {expression: 'document.getElementById("files")'});
         await send('DOM.setFileInputFiles', {objectId: result.objectId, files: [zip]});
         const t0 = performance.now();
         await waitFor('/kept in this browser/.test(window.civ2Status) || /not|Could/.test(window.civ2Status) && window.civ2Status',
@@ -274,7 +274,7 @@ async function main() {
         await send('Browser.setDownloadBehavior', {behavior: 'allow', downloadPath: downloads}).catch(
             () => send('Page.setDownloadBehavior', {behavior: 'allow', downloadPath: downloads}));
         await send('Page.navigate', {url: url + '?setup'});
-        await waitFor('/Ready/.test(window.civ2Status || "")', 30000, 'the set-up page');
+        await waitFor('window.civ2Setup', 30000, 'the set-up page');
         await evaluate('document.querySelector("#have .export-saves").click()');
         const t3 = performance.now();
         let exported = null;

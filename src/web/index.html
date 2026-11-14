@@ -19,7 +19,16 @@
   button.plain { background: none; color: var(--dim); text-decoration: underline; padding: 0; }
   input[type=file] { display: none; }
   #relay { font: inherit; background: var(--panel); color: var(--fg); border: 1px solid #4a4538; padding: 0 0.3rem; }
-  #status { min-height: 1.5rem; color: var(--dim); }
+  #status { color: var(--dim); }
+  #status:empty { display: none; }
+  #chosen { margin: 0.5rem 0 0; }
+  #choose-wrap { position: relative; display: inline-block; }
+  #choose-menu { position: absolute; z-index: 2; left: 50%; transform: translateX(-50%); top: 100%; min-width: 19rem;
+                 background: var(--panel); border: 1px solid #4a4538; border-radius: 6px; padding: 0.25rem; text-align: left; }
+  #choose-menu button { display: block; width: 100%; margin: 0; background: none; color: var(--fg); text-align: left;
+                        border-radius: 4px; padding: 0.4rem 0.75rem; }
+  #choose-menu button:hover, #choose-menu button:focus { background: #2e2a22; outline: none; }
+  #choose-menu span { display: block; color: var(--dim); font-size: 0.85rem; }
   #have { background: var(--panel); border-radius: 8px; padding: 1rem; margin: 1rem 0; }
   #options h2 { font: inherit; font-weight: bold; margin: 1.5rem 0 0.25rem; }
   #options h3 { font: inherit; font-weight: bold; margin: 0.5rem 0 0.25rem; }
@@ -60,34 +69,30 @@
 <div id="setup" hidden>
   <h1>OpenCiv2</h1>
   <p>Civilization II Multiplayer Gold Edition, rebuilt to run in your browser. It plays with
-     <em>your own</em> copy of the game: choose the folder Civilization II is installed in (the one with
-     <code>Civ2Art.dll</code> and <code>RULES.TXT</code>), the game's CD, or a disc image of the CD. The files
-     are copied into this browser's storage, and never leave your computer; your saved games are kept there too.</p>
+     <em>your own</em> copy of the game: the folder Civilization II is installed in (the one with
+     <code>Civ2Art.dll</code> and <code>RULES.TXT</code>), the game's CD, or a disc image of the CD.</p>
   <div id="drop">
-    <label class="button" for="folder">Choose the game's folder (or the CD's)</label>
-    <label class="button" for="zip">a .zip of it</label>
-    <label class="button" for="image">a disc image (.cue and .bin)</label>
-    <p class="dim">or drop the folder, the .zip, or the .cue with its .bin here</p>
+    <div id="choose-wrap">
+      <button id="choose" aria-haspopup="menu" aria-expanded="false">Choose your game&hellip;</button>
+      <div id="choose-menu" role="menu" hidden>
+        <button id="choose-folder" role="menuitem">A folder<span>the installed game, or the CD</span></button>
+        <button id="choose-files" role="menuitem">A file<span>a .zip of the folder, or a disc image (.cue and .bin)</span></button>
+      </div>
+    </div>
+    <p class="dim">or drop it here</p>
+    <p id="chosen" hidden></p>
     <input id="folder" type="file" webkitdirectory multiple>
-    <input id="zip" type="file" accept=".zip,application/zip">
-    <input id="image" type="file" multiple accept=".cue,.bin">
+    <input id="files" type="file" multiple accept=".zip,.cue,.bin,application/zip">
   </div>
-  <p class="dim">From the CD (the folder it is in, with <code>DATA1.CAB</code> and <code>CIV2</code>) or a disc
-     image of it, the game is unpacked as its installer would, with its videos; from a disc image its music too,
-     encoded as Ogg Vorbis (a few minutes; the browser cannot read a CD's music tracks, a disc image has them).
-     Music plays if the game's folder has it (<code>Music/Track02.ogg</code> ..., as the set-up makes it).
-     Network games go through a relay, <code>tools/webrelay.py</code> (see the README).</p>
+  <p id="status"></p>
+  <button id="stop" hidden>Stop</button>
   <p class="dim"><label>Network games' relay: <input id="relay" type="text" size="26" placeholder="ws://127.0.0.1:8765"
-     spellcheck="false"></label> (empty: none; also <code>?relay=ws://HOST:PORT</code>). Join a game by its host's
-     address (Multiplayer, Internet Game); a game hosted here is joined at the relay's address.</p>
-  <p><button id="stop" hidden>Stop</button></p>
+     spellcheck="false"></label></p>
   <div id="have" hidden>
     <p>The game files are in this browser.</p>
     <button id="play">Play</button>
     <button id="forget" class="plain">Remove them</button>
-    <p class="dim">Your saved games (and the scenarios you made, <code>CIV.INI</code>, <code>CIV2.DAT</code>,
-       <code>HALLFAME.DAT</code>), to keep elsewhere or take to another browser or computer:</p>
-    <button class="export-saves">Export saves</button>
+    <button class="export-saves" title="Your saved games, the scenarios you made, CIV.INI, CIV2.DAT and HALLFAME.DAT, as a .zip">Export saves</button>
     <label class="button" for="import-saves">Import saves</label>
   </div>
   <div id="options" hidden>
@@ -100,13 +105,6 @@
       <label class="choice"><input type="radio" name="mode" value="1"> Classic<span class="note" id="note-classic"></span></label>
       <h3>Graphics</h3>
       <label class="choice"><input type="checkbox" id="opt-hd"> HD graphics<span class="note" id="note-hd"></span></label>
-      <div class="indent" id="densities">Density:
-        <label><input type="radio" name="density" value="0"> Auto</label>
-        <label><input type="radio" name="density" value="1"> 1</label>
-        <label><input type="radio" name="density" value="2"> 2</label>
-        <label><input type="radio" name="density" value="3"> 3</label>
-        <label><input type="radio" name="density" value="4"> 4</label>
-      </div>
       <div class="indent" id="art">
         <p id="art-status" class="note"></p>
         <div id="art-bar" hidden><div></div></div>
@@ -131,7 +129,6 @@
       <div id="colours" class="fields"></div>
     </fieldset>
   </div>
-  <p id="status"></p>
 </div>
 <div id="game" hidden><canvas id="screen" tabindex="0"></canvas>
   <button id="saves-open" title="Export or import saved games">Saves</button></div>

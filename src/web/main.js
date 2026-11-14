@@ -158,6 +158,22 @@ async function entryFiles(entry, prefix, out) {
     return out;
 }
 
+// what was chosen, said under the button: "Folder: Civ2 (412 files)",
+// "Disc image: CIV2.cue + CIV2.bin", "Civ2.zip (25 MB)"
+function showChosen(files) {
+    const p = $('chosen');
+    const top = new Set(files.map((f) => f.name.split('/')[0]));
+    if (files.some((f) => f.name.includes('/')))
+        p.textContent = `Folder: ${[...top].join(', ')} (${files.length} files)`;
+    else if (files.some((f) => /\.cue$/i.test(f.name)))
+        p.textContent = 'Disc image: ' + files.map((f) => f.name).join(' + ');
+    else if (files.length === 1)
+        p.textContent = files[0].name + (files[0].file ? ` (${Math.round(files[0].file.size / 1e6)} MB)` : '');
+    else
+        p.textContent = files.map((f) => f.name).join(', ');
+    p.hidden = false;
+}
+
 async function zipFiles(file) {
     status('Reading ' + file.name + ' ...');
     return (await unzip(await file.arrayBuffer())).map((f) => ({name: f.name, data: f.data}));
@@ -310,10 +326,6 @@ function optionsRender() {
         r.checked = +r.value === (now.classic ? 1 : 0);
     $('opt-hd').checked = now.hd;
     $('opt-hd').disabled = now.classic || !!opt.fetching;
-    for (const r of document.querySelectorAll('input[name=density]')) {
-        r.checked = +r.value === now.density;
-        r.disabled = now.classic || !now.hd;
-    }
     $('opt-rules').disabled = $('opt-ui').disabled = now.classic;
     spec.rules.forEach((x, i) => { $('rule-' + i).checked = now.rule[i]; });
     spec.extras.forEach((x, i) => { $('extra-' + i).checked = now.extra[i]; });
@@ -486,11 +498,6 @@ async function showOptions(store) {
                 opt.now.classic = +r.value === 1;
                 optionsChanged();
             };
-        for (const r of document.querySelectorAll('input[name=density]'))
-            r.onchange = () => {
-                opt.now.density = +r.value;
-                optionsChanged();
-            };
         $('opt-hd').onchange = () => {
             opt.now.hd = $('opt-hd').checked;
             optionsChanged();
@@ -639,7 +646,8 @@ async function showSetup(store, ended = false) {
         }
     };
     if (!ended)
-        status(have ? 'Ready.' : 'Choose your installed Civilization II.');
+        status('');
+    window.civ2Setup = true;
 }
 
 async function main() {
@@ -656,7 +664,7 @@ async function main() {
         try {
             localStorage.setItem('civ2.relay', v);
         } catch (e) { /* not kept */ }
-        status(v && !/^wss?:\/\//.test(v) ? 'The relay\'s address starts with ws:// (or wss://).' : 'Ready.');
+        status(v && !/^wss?:\/\//.test(v) ? 'The relay\'s address starts with ws:// (or wss://).' : '');
     };
     const chosen = async (files) => {
         try {
@@ -667,9 +675,52 @@ async function main() {
             status('Could not copy the files: ' + e.message);
         }
     };
-    $('folder').onchange = (e) => chosen([...e.target.files].map((f) => ({name: f.webkitRelativePath || f.name, file: f})));
-    $('zip').onchange = async (e) => e.target.files[0] && chosen(await zipFiles(e.target.files[0]));
-    $('image').onchange = (e) => chosen([...e.target.files].map((f) => ({name: f.name, file: f})));
+    // the one button: a folder (the installed game or the CD) or files (a
+    // .zip of the folder, or a disc image's .cue and .bin), from its menu
+    const menu = $('choose-menu'), choose = $('choose');
+    const showMenu = (on) => {
+        menu.hidden = !on;
+        choose.setAttribute('aria-expanded', on);
+    };
+    choose.onclick = (e) => {
+        e.stopPropagation();
+        showMenu(menu.hidden);
+        if (!menu.hidden)
+            $('choose-folder').focus();
+    };
+    document.addEventListener('click', () => showMenu(false));
+    menu.onkeydown = (e) => {
+        if (e.key === 'Escape') {
+            showMenu(false);
+            choose.focus();
+        }
+    };
+    $('choose-folder').onclick = () => $('folder').click();
+    $('choose-files').onclick = () => $('files').click();
+    $('folder').onchange = (e) => {
+        const files = [...e.target.files].map((f) => ({name: f.webkitRelativePath || f.name, file: f}));
+        e.target.value = '';
+        if (files.length) {
+            showChosen(files);
+            chosen(files);
+        }
+    };
+    $('files').onchange = async (e) => {
+        const files = [...e.target.files];
+        e.target.value = '';
+        if (files.length)
+            chosenFiles(files);
+    };
+    // files (not a folder): a .zip alone, or a disc image's .cue and .bin
+    const chosenFiles = async (files) => {
+        const zip = files.length === 1 && /\.zip$/i.test(files[0].name) ? files[0] : null;
+        showChosen(files.map((f) => ({name: f.name, file: f})));
+        try {
+            chosen(zip ? await zipFiles(zip) : files.map((f) => ({name: f.name, file: f})));
+        } catch (e) {
+            status('Could not read ' + (zip ? zip.name : 'the files') + ': ' + e.message);
+        }
+    };
     const drop = $('drop');
     drop.ondragover = (e) => {
         e.preventDefault();
@@ -680,12 +731,12 @@ async function main() {
         e.preventDefault();
         drop.classList.remove('over');
         const items = [...e.dataTransfer.items].map((i) => i.webkitGetAsEntry && i.webkitGetAsEntry()).filter(Boolean);
-        const zip = [...e.dataTransfer.files].find((f) => /\.zip$/i.test(f.name));
-        if (zip && items.length === 1 && items[0].isFile)
-            return chosen(await zipFiles(zip));
+        if (items.every((it) => it.isFile))
+            return chosenFiles([...e.dataTransfer.files]);
         const files = [];
         for (const it of items)
             await entryFiles(it, '', files);
+        showChosen(files);
         chosen(files);
     };
     // later visits: straight into the game (?setup: this page first)

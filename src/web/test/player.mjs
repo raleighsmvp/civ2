@@ -125,8 +125,8 @@ async function main() {
     await send('Page.enable');
     await send('Emulation.setDeviceMetricsOverride', {width: 1024, height: 768, deviceScaleFactor: 1, mobile: false});
     await send('Page.navigate', {url: url + '?setup'});
-    await waitFor('window.civ2Status', 10000, 'the page');
-    const {result} = await send('Runtime.evaluate', {expression: 'document.getElementById("zip")'});
+    await waitFor('window.civ2Setup', 10000, 'the page');
+    const {result} = await send('Runtime.evaluate', {expression: 'document.getElementById("files")'});
     await send('DOM.setFileInputFiles', {objectId: result.objectId, files: [zip]});
     await waitFor('/kept in this browser/.test(window.civ2Status)', 300000, 'the copy');
     await send('Page.addScriptToEvaluateOnNewDocument', {source: `
