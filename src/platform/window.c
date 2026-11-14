@@ -7,6 +7,7 @@
  * drawn, except the menu bar.
  */
 #include "plat.h"
+#include "hd.h"
 
 static Window desktop_wnd;
 Window *desktop = &desktop_wnd;
@@ -2250,6 +2251,14 @@ static void nc_caption(Window *w, HDC hdc, DC *dc, RECT *r)
         for (i = -3; i <= 3; i++) {         /* the X */
             px_fill(dc, cx + i - 1, cy + i, cx + i + 1, cy + i + 1, 0);
             px_fill(dc, cx + i - 1, cy - i, cx + i + 1, cy - i + 1, 0);
+        }
+        if (hd_on) {                        /* (sharp: the X again) */
+            double l1[4], l2[4];
+            l1[0] = cx - 3; l1[1] = cy - 2.5; l1[2] = cx + 3; l1[3] = cy + 3.5;
+            l2[0] = cx - 3; l2[1] = cy + 3.5; l2[2] = cx + 3; l2[3] = cy - 2.5;
+            hd_dc_rect(dc, cx - 4.5, cy - 3.5, cx + 4.5, cy + 4.5, GetSysColor(COLOR_3DFACE));
+            hd_dc_line(dc, l1, 2, 1.6, 0);
+            hd_dc_line(dc, l2, 2, 1.6, 0);
         }
         if (w->style & (WS_MAXIMIZEBOX | WS_MINIMIZEBOX)) {
             /* maximize (restore when maximized), then minimize to its left;

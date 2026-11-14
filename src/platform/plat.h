@@ -93,7 +93,7 @@ typedef struct Bitmap {
     /* HD graphics (hd.c): the plane, w*d x h*d, and the pixels it took */
     uint32_t *hd;
     unsigned char *hd_prev;
-    int hd_w, hd_h;
+    int hd_w, hd_h, hd_d;       /* (as the surface was then, at density hd_d) */
     const void *hd_bits;
     char hd_sheet[16];          /* the game's sheet loaded here (terrain1 ...) */
 } Bitmap;

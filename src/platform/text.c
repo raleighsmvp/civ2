@@ -388,7 +388,7 @@ void text_draw(DC *dc, int x, int y, const char *s, int n, const RECT *clip)
     Bitmap *b;
     Region rg = {0, 0, NULL};
     int m, w;
-    if (!hd_on || !f || n <= 0 || !(b = dc_target(dc)) || !hd_bitmap_plane(b)) {
+    if (!hd_on || !f || n <= 0 || !(b = dc_target(dc)) || !hd_bitmap_want_plane(b)) {
         text_draw_game(dc, x, y, s, n, clip);
         return;
     }

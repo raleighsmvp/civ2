@@ -6,9 +6,10 @@
  *
  *   Game       Mode: Standard (the original's bugs fixed, the interface
  *              additions) or Classic (the original game, as CIV2_CLASSIC=1);
- *              HD graphics and their density (docs/HD-GRAPHICS.md), the art
- *              downloaded from here where it is missing (src/host/
- *              host_launcher.c); full screen.
+ *              sharp text and interface (on by default but in Classic),
+ *              HD graphics (docs/HD-GRAPHICS.md), the art downloaded from
+ *              here where it is missing (src/host/host_launcher.c); full
+ *              screen.
  *   Rules      the rule changes and limits (EXTRAS.md "Rule changes").
  *   Interface  the interface additions, the colour correction and the
  *              messages shown on the map.
@@ -88,6 +89,7 @@ static const struct { const char *key, *label; int def; } colours[NCOLOR] = {
 
 typedef struct {
     int classic, hd, density, fullscreen, dont_show;
+    int sharp, sharp_set;           /* sharp text and interface; SharpText= set (else: not in Classic) */
     int rule[NRULES], extra[NEXTRAS];
     char limit[NLIMITS][16], colour[NCOLOR][256];
 } Choices;
@@ -160,6 +162,9 @@ static void read_choices(Choices *c)
     get("Graphics", v, sizeof v);
     c->hd = !strcasecmp(v, "HD");
     c->density = get_int("GraphicsDensity", 0);
+    get("SharpText", v, sizeof v);
+    c->sharp_set = v[0] != 0;
+    c->sharp = c->sharp_set ? atoi(v) != 0 : !c->classic;
     if (c->density < 0 || c->density > 4)
         c->density = 0;
     c->fullscreen = get_int("FullScreen", 0) != 0;
@@ -195,6 +200,8 @@ static void write_choices(const Choices *c, const Choices *old)
         put("Graphics", c->hd ? "HD" : "Standard");
     if (c->density != old->density)
         put_int("GraphicsDensity", c->density);
+    if (c->sharp_set && (c->sharp != old->sharp || !old->sharp_set))
+        put_int("SharpText", c->sharp);
     if (c->fullscreen != old->fullscreen)
         put_int("FullScreen", c->fullscreen);
     if (c->dont_show != old->dont_show)
@@ -288,7 +295,7 @@ static struct {
     int installed;              /* the HD art is there */
     int fetching, fetch_state, fetch_info[3];
     char fetch_msg[512];
-    char override_text[128];    /* CIV2_CLASSIC or --hd/CIV2_HD set: they win */
+    char override_text[160];    /* CIV2_CLASSIC, --hd/CIV2_HD, --sharp/CIV2_SHARP set: they win */
 } L;
 
 static HFONT font(const char *face, int px, int bold, int italic)
@@ -418,18 +425,32 @@ static void draw_item(HDC hdc, const Item *it)
             bevel(hdc, &box, 0);
             if (is_on(it)) {
                 int k;
-                /* a check mark, two pixels thick */
+                /* a check mark, two pixels thick (sharp: drawn again) */
+                static const double mark[6] = {4.2, 8.0, 6.8, 10.4, 11.8, 4.8};
+                double xy[6];
                 for (k = 0; k < 3; k++)
                     fill(hdc, x + 4 + k, y + 7 + k, 1, 2, on ? C_TEXT : C_DIM);
                 for (k = 0; k < 5; k++)
                     fill(hdc, x + 7 + k, y + 8 - k, 1, 2, on ? C_TEXT : C_DIM);
+                for (k = 0; k < 6; k++)
+                    xy[k] = mark[k] + (k & 1 ? y : x);
+                hd_dc_rect(dc_get(hdc), x + 2, y + 2, x + 13, y + 13, on ? C_WHITE : C_LIGHT);
+                hd_dc_line(dc_get(hdc), xy, 3, 1.8, on ? C_TEXT : C_DIM);
             }
         } else {
+            DC *dc = dc_get(hdc);
             disc(hdc, x + 7, y + 7, 7, C_SHADE);
             disc(hdc, x + 8, y + 8, 6, C_WHITE);
             disc(hdc, x + 7, y + 7, 6, on ? RGB(232, 232, 232) : C_LIGHT);
             if (is_on(it))
                 disc(hdc, x + 7, y + 7, 3, on ? C_TEXT : C_DIM);
+            /* (sharp: the same discs again, round) */
+            hd_dc_rect(dc, x, y, x + 16, y + 16, C_FACE);
+            hd_dc_disc(dc, x + 7.5, y + 7.5, 7.5, C_SHADE);
+            hd_dc_disc(dc, x + 8.5, y + 8.5, 6.5, C_WHITE);
+            hd_dc_disc(dc, x + 7.5, y + 7.5, 6.5, on ? RGB(232, 232, 232) : C_LIGHT);
+            if (is_on(it))
+                hd_dc_disc(dc, x + 7.5, y + 7.5, 3.5, on ? C_TEXT : C_DIM);
         }
         tr.left += 22;
         tr.bottom = tr.top + 19;
@@ -580,19 +601,21 @@ static void build(void)
               &now.classic, 0);
     add_radio(PAGE_GAME, x, y + 66, 520, "Classic",
               "The original game as it was: its bugs, its look, none of OpenCiv2's additions.", &now.classic, 1);
-    y += 112;
+    y += 106;
     add(T_HEAD, PAGE_GAME, x, y, 300, 22, "Graphics");
-    add_check(PAGE_GAME, x, y + 26, 520, "HD graphics",
+    add_check(PAGE_GAME, x, y + 24, 520, "Sharp text and interface",
+              "Text, menus and controls at the screen's full resolution (the pictures enlarged).", &now.sharp);
+    add_check(PAGE_GAME, x, y + 62, 520, "HD graphics",
               "New art for the map, at the screen's full resolution.", &now.hd);
     /* (the density: always the screen's, Auto; GraphicsDensity= in CIV.INI
        and --hd=N still choose one, for tests) */
-    SetRect(&status_rect, x + 22, y + 66, LW - 30, y + 100);
-    add_button(PAGE_GAME, LW - 130, y + 66, 100, "Download", B_DOWNLOAD);
-    add_button(PAGE_GAME, x + 340, y + 80, 80, "Stop", B_STOP);
-    y += 110;
+    SetRect(&status_rect, x + 22, y + 100, LW - 30, y + 132);
+    add_button(PAGE_GAME, LW - 130, y + 100, 100, "Download", B_DOWNLOAD);
+    add_button(PAGE_GAME, x + 340, y + 112, 80, "Stop", B_STOP);
+    y += 138;
     add_check(PAGE_GAME, x, y, 520, "Full screen", "Instead of a window filling the screen.", &now.fullscreen);
     if (L.override_text[0])
-        add(T_TEXT, PAGE_GAME, x, y + 42, LW - 60, 18, L.override_text)->small = 1;
+        add(T_TEXT, PAGE_GAME, x, y + 38, LW - 60, 18, L.override_text)->small = 1;
     add(T_TEXT, PAGE_GAME, x, LH - 74, LW - 60, 18,
         "The choices are kept in CIV.INI, in the game's folder, under [OpenCiv2].")->small = 1;
 
@@ -699,6 +722,8 @@ static void click(int x, int y)
             return;
         case T_CHECK:
             *it->value = !*it->value;
+            if (it->value == &now.sharp)
+                now.sharp_set = 1;
             if (it->value == &now.hd && now.hd && !L.installed) {
                 now.hd = 0;             /* (on once the art is there) */
                 fetch_start();
@@ -706,8 +731,11 @@ static void click(int x, int y)
             break;
         case T_RADIO:
             *it->value = it->choice;
-            if (it->value == &now.classic)
+            if (it->value == &now.classic) {
+                if (!now.sharp_set)
+                    now.sharp = !now.classic;   /* (by default: not in Classic) */
                 show_page(PAGE_GAME);   /* (the other pages: not in Classic) */
+            }
             break;
         case T_BUTTON:
             if (it->choice == B_PLAY)
@@ -799,10 +827,22 @@ int launcher_run(void)
     {
         /* what the environment or the command line say wins (main.c, hd.c) */
         const char *c = getenv("CIV2_CLASSIC"), *a = getenv("CIV2_HD_ARG"), *e = getenv("CIV2_HD");
-        snprintf(L.override_text, sizeof L.override_text, "%s%s%s%s",
-                 c && *c ? "CIV2_CLASSIC" : "", c && *c && ((a && *a) || (e && *e)) ? " and " : "",
-                 a && *a ? "--hd" : e && *e ? "CIV2_HD" : "",
-                 (c && *c) || (a && *a) || (e && *e) ? " set: for this run they win over these choices." : "");
+        const char *sa = getenv("CIV2_SHARP_ARG"), *se = getenv("CIV2_SHARP");
+        const char *what[3];
+        int k, n = 0;
+        if (c && *c)
+            what[n++] = "CIV2_CLASSIC";
+        if ((a && *a) || (e && *e))
+            what[n++] = a && *a ? "--hd" : "CIV2_HD";
+        if ((sa && *sa) || (se && *se))
+            what[n++] = sa && *sa ? "--sharp" : "CIV2_SHARP";
+        L.override_text[0] = 0;
+        for (k = 0; k < n; k++)
+            snprintf(L.override_text + strlen(L.override_text), sizeof L.override_text - strlen(L.override_text),
+                     "%s%s", k ? (k == n - 1 ? " and " : ", ") : "", what[k]);
+        if (n)
+            snprintf(L.override_text + strlen(L.override_text), sizeof L.override_text - strlen(L.override_text),
+                     " set: for this run %s over these choices.", n > 1 ? "they win" : "it wins");
     }
     L.title = font("Times New Roman", 34, 1, 0);
     L.head = font("Times New Roman", 18, 1, 0);

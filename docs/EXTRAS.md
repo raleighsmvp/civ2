@@ -88,8 +88,9 @@ written) and take effect as the game starts.  Its pages:
 
 - **Game**: the mode, *Standard* (the original's bugs fixed, [BUGS.md](BUGS.md), and these
   additions) or *Classic* (the original game: its look, its bugs, none of these; `Mode=Classic`,
-  as `CIV2_CLASSIC=1`); [HD graphics](#hd-graphics) (`Graphics=HD`, at the screen's own
-  density), the art downloaded from there where it is not installed
+  as `CIV2_CLASSIC=1`); [sharp text and interface](#sharp-text-and-interface) (`SharpText=`, on
+  by default in Standard, off in Classic); [HD graphics](#hd-graphics) (`Graphics=HD`, at the
+  screen's own density), the art downloaded from there where it is not installed
   (234 MB, with its progress and a Stop button; see [HD-GRAPHICS.md](HD-GRAPHICS.md)); full
   screen (`FullScreen=`).
 - **Rules**: the [rule changes](#rule-changes) and the limits, each with a line on what it does.
@@ -99,8 +100,8 @@ written) and take effect as the game starts.  Its pages:
 *Play* starts the game, *Quit* (or Escape, or closing the window) ends.  *Don't show this window
 again* (`Launcher=0`) starts the game at once from then on; the window comes back with
 `--launcher` on the command line, or with Shift held down while the game starts.
-`CIV2_CLASSIC=1` and `--hd` / `CIV2_HD` (in that order) win over the choices made there, for the
-run they are set in (the window says so).  The window is drawn by the platform layer itself
+`CIV2_CLASSIC=1`, `--hd` / `CIV2_HD` and `--sharp` / `CIV2_SHARP` win over the choices made
+there, for the run they are set in (the window says so).  The window is drawn by the platform layer itself
 (`src/platform/launcher.c`), in the colours and fonts of the game's dialogs, the same on every
 system.  It is not shown in replays and unit tests (`CIV2_TEST_LAUNCHER=1` shows it in a replay:
 `harness/extras/x-launcher.txt`), nor in the browser version, whose set-up page has the same
@@ -108,6 +109,28 @@ choices (but full screen), with the same texts ([BROWSER.md](BROWSER.md)).  Its 
 
 These choices were made before in the game, in Game > OpenCiv2 Options; the opening window
 replaces that dialog.
+
+## Sharp text and interface
+
+On a high-resolution screen (a [screen scale](#screen-scale) of 2 or more) the game is shown at
+the screen's full resolution: text is drawn from glyphs of the same fonts as many times as tall,
+and what the platform draws itself (the menu bar and its menus, window captions and frames,
+buttons, check boxes and radio buttons, scroll bars, edit boxes, list boxes, combo boxes, the
+file dialog, the opening window) is drawn at that resolution: its curves and diagonals (radio
+buttons, check marks, the scroll bars' arrows, the combo box's arrow, the close box) drawn smooth,
+its straight lines and edges as many screen pixels wide as the game's pixel is.  The game's own
+pictures (terrain, units, cities, portraits, backgrounds, the icons of its dialogs) stay the
+original bitmaps, enlarged as before.  It is on by default in Standard mode, off in Classic, and
+can be switched in the opening window (Game page, under Graphics) or with `SharpText=1` / `=0` in
+`[OpenCiv2]`; `--sharp` (or `--sharp=0`) on the command line, or `CIV2_SHARP=1` / `=0`, wins for
+that run (`--sharp=N`, N from 2 to 4, sets the density, for tests).  Where the screen scale is 1
+(a 1920x1080 screen, or Windows' display scale at 100%) it has nothing to do and changes nothing.  It is drawn by the HD graphics'
+renderer without their art ([HD-GRAPHICS.md](HD-GRAPHICS.md#the-planes-sharp-text-and-interface));
+with HD graphics on as well, the two combine.  It changes only what is shown: the game's own pixels,
+which its code reads back, and its random numbers are the same with it or without.  Off in replays
+and unit tests (`CIV2_TEST_SHARP=N` turns it on at density N in a replay:
+`harness/extras/x-sharp.txt`, and the opening window's `x-launcher-sharp`).  In the browser version:
+on its `?setup` page, or `?sharp=0` in the address ([BROWSER.md](BROWSER.md#hd-graphics)).
 
 ## HD graphics
 

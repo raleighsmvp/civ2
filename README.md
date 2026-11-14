@@ -26,7 +26,8 @@ wheel, scrolling lists, more figures in the advisors, quick information with Ctr
 units, moving a stack's units of a type together, higher limits for gold, population and the
 map ...). Before the game starts, an opening window lets you choose: Standard, or Classic (the
 original game: its bugs, its interface, and its menu bar and window caption drawn as the
-original's), HD graphics, the rule changes and the interface additions, kept for next time
+original's), sharp text and interface on high-resolution screens (on by default), HD graphics,
+the rule changes and the interface additions, kept for next time
 (`CIV.INI`). "Don't show this window again" skips it; `--launcher`, or Shift held down at
 start, brings it back ([EXTRAS.md](docs/EXTRAS.md#the-opening-window)).
 

@@ -1,12 +1,16 @@
 /*
- * HD graphics (docs/HD-GRAPHICS.md): the game draws as always, into its
+ * The planes (docs/HD-GRAPHICS.md): the game draws as always, into its
  * 8-bit surfaces; beside them some surfaces keep a true-colour plane, density
- * times larger each way, where the sprites the game draws are drawn again
- * from Peter Johnson's replacement art (openciv2-assets).  Whatever else
- * changes a surface's pixels shows in its plane as those pixels enlarged.
- * Off unless CIV.INI's [OpenCiv2] Graphics=HD and the art is installed; never
- * with CIV2_CLASSIC=1, in replays (but CIV2_TEST_HD=N) or the unit tests.
- * Nothing here changes what the game computes, nor calls rand().
+ * times larger each way, where text and the platform's controls are drawn
+ * again at that resolution, and, with HD graphics, the sprites the game
+ * draws from Peter Johnson's replacement art (openciv2-assets).  Whatever
+ * else changes a surface's pixels shows in its plane as those pixels
+ * enlarged.  On with sharp text and interface (CIV.INI's [OpenCiv2]
+ * SharpText=, on by default but in Classic mode) on a screen of more than
+ * one pixel per game pixel, or with HD graphics (Graphics=HD, the art
+ * installed; never in Classic mode); never in replays (but CIV2_TEST_SHARP=N,
+ * CIV2_TEST_HD=N) or the unit tests.  Nothing here changes what the game
+ * computes, nor calls rand().
  */
 #ifndef CIV2_HD_H
 #define CIV2_HD_H
@@ -14,7 +18,8 @@
 extern "C" {
 #endif
 
-extern int hd_on;           /* HD graphics in use */
+extern int hd_on;           /* the planes in use (sharp text and interface, HD graphics) */
+extern int hd_art;          /* HD graphics: the art in use */
 extern int hd_density;      /* plane pixels per surface pixel, each way (1..4) */
 
 /* The game's side (src/auto/graphics*.cpp).  Surfaces are named by their
@@ -53,6 +58,9 @@ void hd_bits_redrawn(void *bits, int x, int y, int w, int h);
 /* The platform's side (src/platform). */
 struct Bitmap;
 void hd_init(int classic, int unit_test, int scale);
+/* For the opening window, before hd_init: sharp text and interface as
+   chosen so far (CIV2_TEST_SHARP in a replay), at the window's scale. */
+void hd_launcher_init(int scale);
 /* The art's file (CIV2_HD_PACK, the program's data/hd, the user's folder's
    hd): 1 if it is there. */
 int hd_pack_path(char *path, int size);
@@ -61,8 +69,22 @@ void hd_redrawn(struct Bitmap *b, int x, int y, int w, int h);     /* fills */
 /* Text (text.c): b's plane (NULL: none); before drawing, the rectangle's
    pixels into it (sync); after, the game's pixels there as shown (commit). */
 unsigned int *hd_bitmap_plane(struct Bitmap *b);
+/* b's plane, given one if it had none (NULL: it cannot have one). */
+unsigned int *hd_bitmap_want_plane(struct Bitmap *b);
 void hd_bitmap_sync(struct Bitmap *b, int x, int y, int w, int h);
 void hd_bitmap_commit(struct Bitmap *b, int x, int y, int w, int h);
+/* Shapes of the platform's controls drawn again on the plane of the DC's
+   surface (given one), antialiased: after the same drawn in its pixels.
+   Coordinates are the DC's logical ones, fractional; nothing without the
+   planes. */
+struct DC;
+void hd_dc_rect(struct DC *dc, double l, double t, double r, double b, unsigned int c);
+void hd_dc_disc(struct DC *dc, double cx, double cy, double r, unsigned int c);
+void hd_dc_line(struct DC *dc, const double *xy, int n, double width, unsigned int c);
+void hd_dc_polygon(struct DC *dc, const double *xy, int n, unsigned int c);
+/* A scroll bar arrow's chevron at (cx, cy), up, down, left, right (0..3),
+   on its face colour. */
+void hd_dc_chevron(struct DC *dc, double cx, double cy, int dir, unsigned int c, unsigned int face);
 /* blit: before (pixels of src about to be read) and after (copied to dst). */
 void hd_blit_begin(struct Bitmap *src, int sx, int sy, int sw, int sh);
 void hd_blit_end(struct Bitmap *dst, struct Bitmap *src, int x, int y, int w, int h, int sx, int sy, int sw,

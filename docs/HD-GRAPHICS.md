@@ -54,9 +54,9 @@ window"), which downloads and installs the art the first time (below), then Play
    set-up takes `--hd` out of its arguments (as `--fix-cue-gaps`) and passes it to the game
    as `CIV2_HD_ARG`.
 
-Without the art the game says so in its log and plays with the original graphics.  HD graphics
-are never on with `CIV2_CLASSIC=1`, in replays (but with `CIV2_TEST_HD=N`, density N) or in
-the unit tests.  `CIV2_HD_PACK=FILE` names another pack.
+Without the art the game says so in its log and plays with the original graphics (sharp text and
+interface still, where they are on: below).  HD graphics are never on with `CIV2_CLASSIC=1`, in
+replays (but with `CIV2_TEST_HD=N`, density N) or in the unit tests.  `CIV2_HD_PACK=FILE` names another pack.
 
 In the browser version: *HD graphics* on its `?setup` page, the art downloaded or chosen there and
 kept in the browser, or `?hd=N` in the address ([BROWSER.md](BROWSER.md#hd-graphics)).
@@ -93,8 +93,11 @@ The rest is in the platform layer (`src/platform/hd.c`):
 
 * A surface (a `Bitmap`) can have a **plane**: true-colour pixels, density times larger each
   way, and a copy of the surface's own pixels as the plane last took them.  A surface gets one
-  when an HD sprite is drawn on it, a surface with one is copied to it, or it is a window
-  shown.
+  when an HD sprite, text or a control's shape is drawn on it, a surface with one is copied to
+  it, or it is a window shown.  (Text gives the surface a plane at once: the game draws much of
+  its text on surfaces of its own, the first screens' dialogs and the menu bar among them, which
+  it then copies to its windows; before, such text was enlarged until something else gave the
+  surface a plane, which in the browser looked like jagged menus until a game was loaded.)
 * **Sheets**: when the game loads one of its sheets (`TERRAIN1.BMP`/`.GIF` ...) from its own
   folder, the surface remembers which; a scenario's own sheets are its own art and keep it.
 * **Sprites**: when the game takes a sprite from a sheet (`Sprite::encode_from_surface`) at a
@@ -112,8 +115,15 @@ The rest is in the platform layer (`src/platform/hd.c`):
 * **Copies** between surfaces (`BitBlt`, `gfx_copy_pixels`) copy the planes too.
 * **Text** on a surface with a plane is drawn again there from the glyphs of the same font
   density times as tall (OpenCiv2's own fonts, to 48 pixels), each glyph where the game's is.
+* **The platform's shapes** that are not straight lines (the opening window's radio buttons and
+  check marks, the scroll bars' arrows, the combo box's arrow, the caption's close box) are drawn
+  again on the plane, antialiased, after the same in the surface's pixels (`hd_dc_disc`,
+  `hd_dc_line`, `hd_dc_polygon`, `hd_dc_chevron`); straight edges and lines are the surface's
+  pixels enlarged, as many screen pixels wide as a game pixel, as a Windows desktop at that scale
+  draws them.
 * **The screen**: the desktop is composed as before, and beside it the HD frame, from the
-  windows' planes (or their pixels enlarged), with the colour correction; the host shows that
+  windows' planes (or their pixels enlarged), the desktop's background (with a plane of its own,
+  enlarged once) only where no window covers it, with the colour correction; the host shows that
   frame (`host_present_hd`) in the same place, at its density.  A replay's `shot NAME` also
   saves `NAME-hd.bmp` (the frame).
 
@@ -128,6 +138,28 @@ make up.
 The idea of the second plane kept up to date by the differences is Peter Johnson's, from
 PR #11's `src/platform/hd.c`; this is a smaller implementation of it (about 900 lines against
 some 20,000).
+
+## The planes: sharp text and interface
+
+The planes are the renderer; the art is one use of them.  `hd_on` says the planes are in use,
+`hd_art` that the art is: with sharp text and interface ([EXTRAS.md](EXTRAS.md#sharp-text-and-interface),
+`SharpText=`, on by default in Standard mode) the planes run without the art at the screen's own
+density (as HD graphics' *Auto*), so that text and the platform's controls are drawn at the
+screen's resolution while every sprite keeps its original pixels, enlarged (the sprites' calls
+find no picture in an empty pack).  With HD graphics on, both: the art's density, the art, and
+the sharp text and controls.  Where the screen's scale is 1 and HD graphics are off, there are no
+planes.  The opening window (before the game's settings are read) is drawn sharp as
+`SharpText=` was last chosen.  In replays only `CIV2_TEST_SHARP=N` (density N) or
+`CIV2_TEST_HD=N` turn the planes on, never in the unit tests.
+
+Its cost, measured on this machine (one slow core) on a 1280x720 desktop (a 4K screen at
+scale 3): composing the frame takes about 3 ms at density 2 and 5 to 7 ms at density 3 (0.3 ms
+without the planes; it was 9 to 15 ms before the background was taken only where no window covers
+it); a replay of loading a game, its advisor, city window and menus takes some 20% (density 2)
+to 40% (density 3) more time than without (including the container's start).  In the browser, at a device pixel ratio
+of 2 (a 2560x1600 frame), showing a frame takes some 11 ms either way; the module's memory on the
+map is 179 MB with sharp text (87 MB without, 202 MB with HD graphics).  The frame is composed
+only when the screen changed (`plat_present`'s signature), as before.
 
 ## The choice (November 2026)
 
@@ -157,6 +189,12 @@ The PNG decoder: stb_image 2.30 by Sean Barrett, public domain or MIT
 * HD off (the default): `make test` (11,119 cases), `make native-suite EXE=OpenCiv2` (44 PASS),
   `make test-extras` (28 PASS: the opening window's script, x-launcher, replaced the options
   dialog's).
+* Sharp text and interface: `make test-extras` runs `harness/extras/x-sharp.txt` (the main menu,
+  the real file dialog, the map, the Trade Advisor's scroll bar, the city window, the Game menu)
+  and the opening window's `x-launcher-sharp` with `CIV2_TEST_SHARP=2`: their game pixels and
+  `rand()` traces are those of the same runs without it, their `-hd` frames looked at by eye and
+  blessed.  `src/web/test/hd.mjs` checks that the first screen's text is sharp, with HD graphics
+  and with sharp text alone (`?hd=0`), and `?hd=0&sharp=0` the original's.
 * HD on: `harness/hd/hd-map.txt` (a saved game's map, zoomed) and any replay script with
   `CIV2_TEST_HD=2`: for `harness/scripts/citywindow.txt` and `newgame.txt` every logical
   screenshot, the `rand()` trace (1,049 and 13,280 calls) and the sounds are identical to the
@@ -178,7 +216,9 @@ The PNG decoder: stb_image 2.30 by Sean Barrett, public domain or MIT
   plane; the screen's grey fade does not grey the frame.
 * Speed: the frame is composed on the CPU each time it is shown (at density 3 on a 4K screen,
   some 33 MB per frame); a texture per window (PR #11's GPU compositor) would be faster.
-* The game's own dialogs' frames and buttons are enlarged pixels (their text is sharp).
+* The game's own dialogs' frames and buttons are its own pixels enlarged (straight lines, so
+  as crisp as a Windows desktop at that scale draws them; their text is sharp); its radio
+  buttons and check boxes are its own pictures, enlarged.
 * The browser version gives the game only the pictures hd.c draws (`src/web/hdpack.js`: `KEEP`,
   the keys' first parts); a picture of another kind drawn here must be added there.  The page
   cannot download the art from GitHub itself (no CORS on release downloads): the player chooses

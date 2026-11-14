@@ -1,5 +1,7 @@
 /*
- * HD graphics (src/platform/hd.h, docs/HD-GRAPHICS.md).
+ * The planes: HD graphics and sharp text and interface (src/platform/hd.h,
+ * docs/HD-GRAPHICS.md).  Without the art (sharp text and interface alone)
+ * the pack is empty: every sprite keeps its own pixels, enlarged.
  *
  * The art: Peter Johnson's runtime pack (openciv2-assets, MIT), its file
  * data/atlas-hd.pack: "C2ATLAS1", a count, a palette (768 bytes), then per
@@ -25,6 +27,7 @@
  */
 #include "plat.h"
 #include "hd.h"
+#include "launcher.h"
 #include "../host/host.h"
 #define STBI_ONLY_PNG
 #define STBI_NO_STDIO
@@ -39,6 +42,7 @@ extern char plat_game_dir[];
 int plat_profile_string(const char *file, const char *section, const char *key, char *out, int n);
 
 int hd_on;
+int hd_art;
 int hd_density = 1;
 
 /* ---- the pack ---- */
@@ -297,7 +301,7 @@ void hd_bitmap_free(Bitmap *b)
 
 static int valid(const Bitmap *b)
 {
-    return b && b->hd && b->hd_w == b->w && b->hd_h == b->h && b->hd_bits == b->bits;
+    return b && b->hd && b->hd_w == b->w && b->hd_h == b->h && b->hd_bits == b->bits && b->hd_d == hd_density;
 }
 
 /* Gives b a plane, its pixels enlarged.  0: it cannot have one. */
@@ -317,6 +321,7 @@ static int plane(Bitmap *b)
     }
     b->hd_w = b->w;
     b->hd_h = b->h;
+    b->hd_d = hd_density;
     b->hd_bits = b->bits;
     for (y = 0; y < b->h; y++) {
         const unsigned char *row = bmp_row(b, y);
@@ -476,6 +481,14 @@ unsigned int *hd_bitmap_plane(Bitmap *b)
     return hd_on && valid(b) ? b->hd : NULL;
 }
 
+/* A surface text (or a control) is drawn on gets a plane: drawn there
+   sharp, it stays sharp where the surface is copied (the game draws much of
+   its text on surfaces of its own, then copies them to its windows). */
+unsigned int *hd_bitmap_want_plane(Bitmap *b)
+{
+    return hd_on && plane(b) ? b->hd : NULL;
+}
+
 void hd_bitmap_sync(Bitmap *b, int x, int y, int w, int h)
 {
     if (hd_on)
@@ -520,6 +533,175 @@ void hd_copy_end(void *dst_bits, void *src_bits, int dx, int dy, int sx, int sy,
 {
     if (hd_on)
         hd_blit_end(bmp_of_bits(dst_bits), bmp_of_bits(src_bits), dx, dy, w, h, sx, sy, w, h, dx, dy, dx + w, dy + h);
+}
+
+/* ---- the platform's shapes, sharp (radio buttons, check marks, arrows) ----
+
+   Drawn again on the plane after the platform drew them in the surface's
+   pixels: antialiased, 4 x 4 samples per plane pixel.  Coordinates are the
+   DC's (logical pixels, fractional). */
+
+enum { SH_RECT, SH_DISC, SH_LINE, SH_POLY };
+typedef struct {
+    int kind, n;
+    const double *xy;           /* SH_LINE, SH_POLY: n points */
+    double a[4], w;             /* SH_RECT l t r b; SH_DISC cx cy r; SH_LINE width w */
+} Shape;
+
+static double seg_dist2(double px, double py, double ax, double ay, double bx, double by)
+{
+    double dx = bx - ax, dy = by - ay, l = dx * dx + dy * dy, t = l > 0 ? ((px - ax) * dx + (py - ay) * dy) / l : 0;
+    if (t < 0) t = 0;
+    if (t > 1) t = 1;
+    dx = ax + t * dx - px;
+    dy = ay + t * dy - py;
+    return dx * dx + dy * dy;
+}
+
+static int inside(const Shape *s, double x, double y)
+{
+    int i, in = 0;
+    switch (s->kind) {
+    case SH_RECT:
+        return x >= s->a[0] && x < s->a[2] && y >= s->a[1] && y < s->a[3];
+    case SH_DISC:
+        return (x - s->a[0]) * (x - s->a[0]) + (y - s->a[1]) * (y - s->a[1]) <= s->a[2] * s->a[2];
+    case SH_LINE:
+        for (i = 0; i + 1 < s->n; i++)
+            if (seg_dist2(x, y, s->xy[2 * i], s->xy[2 * i + 1], s->xy[2 * i + 2], s->xy[2 * i + 3]) <= s->w * s->w / 4)
+                return 1;
+        return 0;
+    default:                    /* even-odd */
+        for (i = 0; i < s->n; i++) {
+            const double *p = s->xy + 2 * i, *q = s->xy + 2 * ((i + 1) % s->n);
+            if ((p[1] > y) != (q[1] > y) && x < p[0] + (y - p[1]) * (q[0] - p[0]) / (q[1] - p[1]))
+                in = !in;
+        }
+        return in;
+    }
+}
+
+static void bounds(const Shape *s, double *l, double *t, double *r, double *b)
+{
+    int i;
+    switch (s->kind) {
+    case SH_RECT:
+        *l = s->a[0]; *t = s->a[1]; *r = s->a[2]; *b = s->a[3];
+        return;
+    case SH_DISC:
+        *l = s->a[0] - s->a[2]; *t = s->a[1] - s->a[2]; *r = s->a[0] + s->a[2]; *b = s->a[1] + s->a[2];
+        return;
+    default:
+        *l = *r = s->xy[0];
+        *t = *b = s->xy[1];
+        for (i = 1; i < s->n; i++) {
+            if (s->xy[2 * i] < *l) *l = s->xy[2 * i];
+            if (s->xy[2 * i] > *r) *r = s->xy[2 * i];
+            if (s->xy[2 * i + 1] < *t) *t = s->xy[2 * i + 1];
+            if (s->xy[2 * i + 1] > *b) *b = s->xy[2 * i + 1];
+        }
+        if (s->kind == SH_LINE) {
+            *l -= s->w / 2; *t -= s->w / 2; *r += s->w / 2; *b += s->w / 2;
+        }
+    }
+}
+
+static void draw_shape(DC *dc, const Shape *s, COLORREF colour)
+{
+    Bitmap *b;
+    Region rg = {0, 0, NULL};
+    double l, t, r, bot;
+    int d = hd_density, ox, oy, k, L, T, R, B;
+    uint32_t c;
+    if (!hd_on || !dc || !(b = dc_target(dc)) || !hd_bitmap_want_plane(b))
+        return;
+    colour = dc_resolve_color(dc, colour);
+    c = (uint32_t)GetRValue(colour) << 16 | (uint32_t)GetGValue(colour) << 8 | GetBValue(colour);
+    ox = dc->is_memory ? 0 : dc->origin.x;
+    oy = dc->is_memory ? 0 : dc->origin.y;
+    bounds(s, &l, &t, &r, &bot);
+    L = (int)floor(l) + ox; T = (int)floor(t) + oy; R = (int)ceil(r) + ox; B = (int)ceil(bot) + oy;
+    if (!clip_rect(b, &L, &T, &R, &B))
+        return;
+    if (dc->is_memory) {
+        RECT all = {0, 0, 0, 0};
+        all.right = b->w;
+        all.bottom = b->h;
+        rgn_set(&rg, &all);
+    } else
+        rgn_copy(&rg, &dc->clip);
+    sync_rect(b, L, T, R, B);
+    for (k = 0; k < rg.n; k++) {
+        int cl = rg.r[k].left > L ? rg.r[k].left : L, ct = rg.r[k].top > T ? rg.r[k].top : T;
+        int cr = rg.r[k].right < R ? rg.r[k].right : R, cb = rg.r[k].bottom < B ? rg.r[k].bottom : B, x, y, i, j;
+        for (y = ct * d; y < cb * d; y++)
+            for (x = cl * d; x < cr * d; x++) {
+                int n = 0;
+                uint32_t *p, z;
+                for (j = 0; j < 4; j++)
+                    for (i = 0; i < 4; i++)
+                        n += inside(s, (x + (i + .5) / 4) / d - ox, (y + (j + .5) / 4) / d - oy);
+                if (!n)
+                    continue;
+                p = b->hd + (size_t)y * b->w * d + x;
+                z = *p;
+                *p = 0xff000000u | (((c >> 16 & 255) * n + (z >> 16 & 255) * (16 - n)) / 16) << 16 |
+                     (((c >> 8 & 255) * n + (z >> 8 & 255) * (16 - n)) / 16) << 8 |
+                     ((c & 255) * n + (z & 255) * (16 - n)) / 16;
+            }
+    }
+    commit_rect(b, L, T, R, B);
+    rgn_free(&rg);
+}
+
+void hd_dc_rect(DC *dc, double l, double t, double r, double b, unsigned int c)
+{
+    Shape s = {SH_RECT, 0, NULL, {0, 0, 0, 0}, 0};
+    s.a[0] = l; s.a[1] = t; s.a[2] = r; s.a[3] = b;
+    if (hd_on)
+        draw_shape(dc, &s, c);
+}
+
+void hd_dc_disc(DC *dc, double cx, double cy, double r, unsigned int c)
+{
+    Shape s = {SH_DISC, 0, NULL, {0, 0, 0, 0}, 0};
+    s.a[0] = cx; s.a[1] = cy; s.a[2] = r;
+    if (hd_on)
+        draw_shape(dc, &s, c);
+}
+
+void hd_dc_line(DC *dc, const double *xy, int n, double width, unsigned int c)
+{
+    Shape s = {SH_LINE, 0, NULL, {0, 0, 0, 0}, 0};
+    s.n = n; s.xy = xy; s.w = width;
+    if (hd_on && n >= 2)
+        draw_shape(dc, &s, c);
+}
+
+void hd_dc_polygon(DC *dc, const double *xy, int n, unsigned int c)
+{
+    Shape s = {SH_POLY, 0, NULL, {0, 0, 0, 0}, 0};
+    s.n = n; s.xy = xy;
+    if (hd_on && n >= 3)
+        draw_shape(dc, &s, c);
+}
+
+/* A scroll bar arrow's chevron, centred at (cx, cy), pointing up, down,
+   left or right (0 to 3), on the arrow's white (as scroll_theme.h's). */
+void hd_dc_chevron(DC *dc, double cx, double cy, int dir, unsigned int c, unsigned int face)
+{
+    static const double up[6] = {-3.3, 1.3, 0, -1.9, 3.3, 1.3};
+    double xy[6];
+    int i;
+    if (!hd_on)
+        return;
+    for (i = 0; i < 3; i++) {
+        double u = up[2 * i], v = up[2 * i + 1];
+        xy[2 * i] = cx + (dir < 2 ? u : dir == 2 ? v : -v);
+        xy[2 * i + 1] = cy + (dir == 0 ? v : dir == 1 ? -v : u);
+    }
+    hd_dc_rect(dc, cx - 4.5, cy - 3.5, cx + 4.5, cy + 3.5, face);
+    hd_dc_line(dc, xy, 3, 1.3, c);
 }
 
 /* ---- sheets and sprites ---- */
@@ -715,31 +897,24 @@ void hd_sprite_end(const void *s, unsigned handle, void *bits, int x, int y, int
 /* ---- the desktop ---- */
 
 static Bitmap *frame_of;        /* the screen, whose plane is the frame */
+static Region bare;             /* what no window covers: the background */
 
 void hd_compose_begin(void)
 {
-    int d = hd_density, x, y, i;
+    RECT all = {0, 0, 0, 0};
     if (!hd_on || !plane(screen))
         return;
     frame_of = screen;
-    /* the background (the desktop's own surface), enlarged */
-    for (y = 0; y < root->h && y < screen->h; y++) {
-        const unsigned char *row = bmp_row(root, y);
-        for (x = 0; x < root->w && x < screen->w; x++) {
-            uint32_t c = logical(root, row, x), *p = screen->hd + (size_t)y * d * screen->w * d + (size_t)x * d;
-            for (i = 0; i < d; i++, p += screen->w * d) {
-                int k;
-                for (k = 0; k < d; k++)
-                    p[k] = c;
-            }
-        }
-    }
+    all.right = screen->w;
+    all.bottom = screen->h;
+    rgn_set(&bare, &all);
 }
 
 /* Surface s shows at dx, dy; this piece is screen rectangle l, t, r, b. */
 void hd_compose_piece(Bitmap *s, int dx, int dy, int l, int t, int r, int b)
 {
     int d = hd_density, x, y, i;
+    RECT piece;
     if (!hd_on || !valid(screen))
         return;
     if (l < dx) l = dx;
@@ -748,6 +923,8 @@ void hd_compose_piece(Bitmap *s, int dx, int dy, int l, int t, int r, int b)
     if (b > dy + s->h) b = dy + s->h;
     if (!clip_rect(screen, &l, &t, &r, &b))
         return;
+    SetRect(&piece, l, t, r, b);
+    rgn_subtract_rect(&bare, &piece);
     /* every window shown gets a plane: what it draws next (text) is drawn
        there sharp */
     if (plane(s)) {
@@ -772,11 +949,33 @@ void hd_compose_piece(Bitmap *s, int dx, int dy, int l, int t, int r, int b)
     }
 }
 
+/* The background (the desktop's own surface, with a plane of its own, so
+   that it is enlarged once) where no window covers it. */
+static void compose_background(void)
+{
+    int d = hd_density, k, y;
+    if (rgn_empty(&bare) || !plane(root))
+        return;
+    for (k = 0; k < bare.n; k++) {
+        int l = bare.r[k].left, t = bare.r[k].top, r = bare.r[k].right, b = bare.r[k].bottom;
+        if (r > root->w) r = root->w;
+        if (b > root->h) b = root->h;
+        if (l >= r || t >= b)
+            continue;
+        sync_rect(root, l, t, r, b);
+        for (y = t * d; y < b * d; y++)
+            memcpy(screen->hd + (size_t)y * screen->w * d + l * d, root->hd + (size_t)y * root->w * d + l * d,
+                   (size_t)(r - l) * d * 4);
+    }
+}
+
 void hd_compose_end(const unsigned char *lut)
 {
     size_t i, n;
     if (!hd_on || !valid(screen))
         return;
+    compose_background();
+    rgn_clear(&bare);
     if (lut) {
         n = (size_t)screen->w * screen->h * hd_density * hd_density;
         for (i = 0; i < n; i++) {
@@ -860,40 +1059,113 @@ int hd_pack_path(char *path, int size)
     return 0;
 }
 
+/* A setting's value: "0" off, "1" (or "on") on at the screen's density, "N"
+   (2 to 4) at density N; -1 off, 0 the screen's, N. */
+static int wanted(const char *v)
+{
+    if (atoi(v) > 1)
+        return atoi(v);
+    return atoi(v) == 1 || !strcasecmp(v, "on") ? 0 : -1;
+}
+
+/* Sharp text and interface (docs/EXTRAS.md): the planes without the art.
+   The command line's --sharp[=N] (CIV2_SHARP_ARG), else CIV2_SHARP=N, else
+   CIV.INI's SharpText= (by default on, but in Classic mode).  -1 off, 0 at
+   the screen's density, N. */
+static int sharp_wanted(int classic)
+{
+    const char *arg = getenv("CIV2_SHARP_ARG"), *env = getenv("CIV2_SHARP");
+    char value[16] = "";
+    if (arg && *arg)
+        return wanted(arg);
+    if (env && *env)
+        return wanted(env);
+    if (!launcher_setting("SharpText", value, sizeof value))
+        plat_profile_string("CIV.INI", "OpenCiv2", "SharpText", value, sizeof value);
+    return value[0] ? wanted(value) : classic ? -1 : 0;
+}
+
+/* (the pack closed: the planes alone, or nothing) */
+static void close_pack(void)
+{
+    unsigned i;
+    if (pack)
+        fclose(pack);
+    pack = NULL;
+    for (i = 0; i < nentries; i++)
+        free(entries[i].rgba);
+    free(entries);
+    entries = NULL;
+    nentries = 0;
+    decoded_bytes = 0;
+    hd_art = 0;
+}
+
+void hd_launcher_init(int scale)
+{
+    char mode[32] = "";
+    int want;
+    const char *test = getenv("CIV2_TEST_SHARP");
+    if (plat_replay)
+        want = test && atoi(test) > 1 ? atoi(test) : -1;
+    else {
+        const char *c = getenv("CIV2_CLASSIC");
+        plat_profile_string("CIV.INI", "OpenCiv2", "Mode", mode, sizeof mode);
+        want = sharp_wanted((c && *c) || !strcasecmp(mode, "Classic"));
+        if (!want)
+            want = scale;
+    }
+    hd_density = want > 4 ? 4 : want;
+    hd_on = hd_density > 1;
+    if (!hd_on)
+        hd_density = 1;
+}
+
 void hd_init(int classic, int unit_test, int scale)
 {
     char path[1100], value[16];
-    const char *test = getenv("CIV2_TEST_HD");
-    int want;
-    if (classic || unit_test)
+    const char *test = getenv("CIV2_TEST_HD"), *test_sharp = getenv("CIV2_TEST_SHARP");
+    int art, sharp;
+    close_pack();
+    hd_on = 0;
+    hd_density = 1;
+    if (unit_test)
         return;
     if (plat_replay) {
         /* replays are compared with the original: only on request */
-        if (!test || atoi(test) < 1)
-            return;
-        want = atoi(test);
+        art = test && atoi(test) >= 1 ? atoi(test) : -1;
+        sharp = test_sharp && atoi(test_sharp) >= 1 ? atoi(test_sharp) : -1;
     } else {
-        /* the command line's --hd[=N] (CIV2_HD_ARG), else CIV2_HD=N, else
-           CIV.INI's Graphics=HD: 0 off, 1 on, 2 to 4 on at that density */
+        /* the art: the command line's --hd[=N] (CIV2_HD_ARG), else
+           CIV2_HD=N, else CIV.INI's Graphics=HD; never in Classic mode */
         const char *arg = getenv("CIV2_HD_ARG"), *env = getenv("CIV2_HD");
         const char *on = arg && *arg ? arg : env && *env ? env : NULL;
-        if (on)
-            want = atoi(on) > 1 ? atoi(on) : atoi(on) == 1 || !strcasecmp(on, "on") ? 0 : -1;
+        if (classic)
+            art = -1;
+        else if (on)
+            art = wanted(on);
         else {
             plat_profile_string("CIV.INI", "OpenCiv2", "Graphics", value, sizeof value);
-            want = strcasecmp(value, "HD") ? -1 : 0;
+            art = strcasecmp(value, "HD") ? -1 : 0;
         }
-        if (want < 0)
-            return;
-        if (!want)
-            want = (int)GetPrivateProfileIntA("OpenCiv2", "GraphicsDensity", 0, "CIV.INI");
-        if (want < 1)
-            want = scale;           /* a plane pixel per pixel of the display */
+        if (!art)
+            art = (int)GetPrivateProfileIntA("OpenCiv2", "GraphicsDensity", 0, "CIV.INI");
+        if (!art)
+            art = scale;            /* a plane pixel per pixel of the display */
+        sharp = sharp_wanted(classic);
+        if (!sharp)
+            sharp = scale;
     }
-    hd_density = want < 1 ? 1 : want > 4 ? 4 : want;
-    if (!hd_pack_path(path, sizeof path))
+    /* the art at its density (1 too: the new art at the original's size);
+       sharp text and interface only where the screen has more pixels */
+    if (art >= 1 && hd_pack_path(path, sizeof path)) {
+        hd_density = art > 4 ? 4 : art;
+        hd_art = open_pack(path);
+    } else if (art >= 1)
         plat_log("hd: no art (%s/hd/atlas-hd.pack, nor in the user's folder)\n", plat_data_dir);
-    hd_on = open_pack(path);
-    if (!hd_on)
-        hd_density = 1;
+    if (!hd_art)
+        hd_density = sharp > 4 ? 4 : sharp > 1 ? sharp : 1;
+    hd_on = hd_art || hd_density > 1;
+    if (hd_on && !hd_art)
+        plat_log("Sharp text and interface: density %d\n", hd_density);
 }

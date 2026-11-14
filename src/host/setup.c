@@ -282,7 +282,7 @@ int setup_choose_game(int argc, char **argv, char *game, size_t size)
     int again, ok, cancelled, music_only, cd_music = 0;
     int i, n;
 
-    /* (--fix-cue-gaps, --no-fix-cue-gaps, --hd, --hd=N, --launcher, any
+    /* (--fix-cue-gaps, --no-fix-cue-gaps, --hd, --hd=N, --sharp, --sharp=N, --launcher, any
        case: noted and left out of the arguments read here) */
     for (i = n = argc > 0; i < argc; i++)
         if (same_flag(argv[i], "--no-fix-cue-gaps"))
@@ -294,6 +294,16 @@ int setup_choose_game(int argc, char **argv, char *game, size_t size)
                --hd=N density N (2 to 4; 1 on, 0 off), as CIV2_HD_ARG */
             char kv[64];
             snprintf(kv, sizeof kv, "CIV2_HD_ARG=%s", argv[i][4] == '=' ? argv[i] + 5 : "1");
+#ifdef _WIN32
+            _putenv(kv);
+#else
+            putenv(strdup(kv));
+#endif
+        } else if (same_flag(argv[i], "--sharp") || !strncmp(argv[i], "--sharp=", 8) || !strncmp(argv[i], "--SHARP=", 8)) {
+            /* sharp text and interface (docs/EXTRAS.md), for the game:
+               --sharp on, --sharp=0 off, as CIV2_SHARP_ARG */
+            char kv[64];
+            snprintf(kv, sizeof kv, "CIV2_SHARP_ARG=%s", argv[i][7] == '=' ? argv[i] + 8 : "1");
 #ifdef _WIN32
             _putenv(kv);
 #else

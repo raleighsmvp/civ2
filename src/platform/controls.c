@@ -4,6 +4,7 @@
  * bars.  Behaviour and look follow Wine's builtin controls.
  */
 #include "plat.h"
+#include "hd.h"
 
 #ifndef ODT_LISTBOX
 #define ODT_LISTBOX 2
@@ -1539,6 +1540,12 @@ static void combo_paint_button(HDC hdc, const RECT *b, int pushed)
         l.left = x + i; l.right = x + 7 - i; l.top = y + i; l.bottom = l.top + 1;
         dc_fill_rect(dc, &l, GetSysColor(COLOR_BTNTEXT));
     }
+    if (hd_on) {        /* (sharp: the triangle again) */
+        double xy[6];
+        xy[0] = x + .2; xy[1] = y; xy[2] = x + 6.8; xy[3] = y; xy[4] = x + 3.5; xy[5] = y + 3.6;
+        hd_dc_rect(dc, x - .5, y - .5, x + 7.5, y + 4.5, GetSysColor(COLOR_BTNFACE));
+        hd_dc_polygon(dc, xy, 3, GetSysColor(COLOR_BTNTEXT));
+    }
 }
 
 static void combo_paint(Window *w, Combo *c, HDC hdc)
@@ -1971,6 +1978,12 @@ static void scroll_draw(HDC hdc, const RECT *r, int vert, const Scroll *s, int c
         } else {
             scroll_part(dc, disabled ? sb_left_off : sb_left, a.left, a.top, 17, a.bottom - a.top, &a);
             scroll_part(dc, disabled ? sb_right_off : sb_right, b.right - 17, b.top, 17, b.bottom - b.top, &b);
+        }
+        if (hd_on && arrow == 17 && (vert ? r->right - r->left : r->bottom - r->top) >= 13) {
+            /* (sharp: the arrows' chevrons again) */
+            COLORREF c = disabled ? RGB(194, 194, 194) : RGB(61, 61, 61), face = RGB(255, 255, 255);
+            hd_dc_chevron(dc, (a.left + a.right) / 2.0, (a.top + a.bottom) / 2.0, vert ? 0 : 2, c, face);
+            hd_dc_chevron(dc, (b.left + b.right) / 2.0, (b.top + b.bottom) / 2.0, vert ? 1 : 3, c, face);
         }
     }
 }

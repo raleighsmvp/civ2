@@ -5,6 +5,9 @@
 # game, its menu and a saved game, with the choices made (no turn after the
 # year, the colours brighter).
 # test: CIV2_TEST_LAUNCHER=1 CIV2_TEST_EXTRAS=1 CIV2_TEST_FULL=640x480
+# (sharp: the same with sharp text and interface at density 2, the -hd
+# shots the window drawn sharp)
+# test sharp: CIV2_TEST_SHARP=2 CIV2_TEST_LAUNCHER=1 CIV2_TEST_EXTRAS=1 CIV2_TEST_FULL=640x480
 wait 1000
 shot xl-a-game
 click 196 66                # Rules

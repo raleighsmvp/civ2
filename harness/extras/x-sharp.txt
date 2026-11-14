@@ -1,0 +1,40 @@
+# Sharp text and interface (docs/EXTRAS.md, docs/HD-GRAPHICS.md): the planes
+# at density 2 without the HD art.  Each shot's game pixels are those of the
+# same run without it (the option changes only what is shown); the -hd shots
+# (the frame) are to be looked at: the text, the menus and the controls
+# sharp from the first screen, the pictures enlarged.  The main menu, the
+# file dialog (the real one), the map, the Game menu, the Trade Advisor (its
+# scroll bar), the city window.
+# test: CIV2_TEST_SHARP=2 CIV2_TEST_EXTRAS=1 CIV2_TEST_FULL=640x480 CIV2_REAL_FILEDLG=1
+wait 8000
+shot xs-a-mainmenu
+key Down Down Down Down     # "Load a Game"
+wait 500
+key Return
+wait 3000
+shot xs-b-filedlg
+type Ca_Auto.SAV
+key Return
+wait 30000
+key Return
+wait 8000
+shot xs-c-map
+call menu_command 4e2803 0 1285
+wait 3000
+shot xs-d-trade
+key Escape
+wait 2000
+call menu_command 4e2803 0 528
+wait 3000
+key Return
+wait 12000
+click 235 265
+wait 12000
+shot xs-e-city
+key Escape
+wait 3000
+click 20 29                 # the Game menu
+wait 1000
+shot xs-f-menu
+key Escape
+wait 1000
