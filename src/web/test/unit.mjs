@@ -278,7 +278,7 @@ assert.ok(spec.rules.length >= 5 && spec.extras.length >= 20 && spec.limits.leng
 const c0 = readChoices(spec, '');
 assert.equal(c0.classic, false);
 assert.equal(c0.hd, false);
-assert.ok(c0.extra.every((x) => x) && c0.rule.every((x) => !x));
+assert.ok(c0.extra.every((x, i) => x === (spec.extras[i].key !== 'HotkeyUnderlines')) && c0.rule.every((x) => !x));   // (HotkeyUnderlines: off by default)
 assert.deepEqual(c0.limit, ['2020', '2000', '32000', '30000', '10000']);
 assert.deepEqual(c0.colour, ['100', '0', '0', '']);
 assert.deepEqual(changedChoices(spec, c0, c0), []);

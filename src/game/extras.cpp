@@ -36,6 +36,7 @@ static const KeyItem extra_keys[] = {
     {X_SUPPRESS_POPUPS, "SuppressPopups"}, {X_COLOR, "ColorCorrection"},
     {X_FOREIGN_GOLD, "ForeignGold"}, {X_ARRANGE, "ArrangeWindowsSL"}, {X_PATH_LINES, "PathLines"},
     {X_SENTRY_GREY, "SentryHalftone"}, {X_ZOOM_1, "DefaultZoom1"},
+    {X_HOTKEY_LINES, "HotkeyUnderlines"},
 };
 
 /* The rule changes (extra_rule): off unless their key is set (=1; the
@@ -155,7 +156,7 @@ void extras_load(void)
         return;
     }
     for (i = 0; i < sizeof extra_keys / sizeof extra_keys[0]; i++)
-        if (extras_setting(extra_keys[i].key, 1))
+        if (extras_setting(extra_keys[i].key, extra_keys[i].item != X_HOTKEY_LINES))   /* (off by default) */
             extras_enabled |= (uint64_t)1 << extra_keys[i].item;
     if (plat_replay) {  /* "1": the additions; "all": and the rule changes */
         char chosen[16];

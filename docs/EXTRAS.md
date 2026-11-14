@@ -42,7 +42,7 @@ effect the next time the game starts.
 | `SupportSort` | The city window's supported units are sorted: settlers and engineers first, then attack units (land, air, then sea; strongest first), then the rest. |
 | `AttitudeColors` | The Attitude Advisor shows celebrating cities in yellow, and an icon after a city's name when it has a food surplus or shortage. |
 | `CityAttitude` | In the city window, the text under the citizens is coloured as in the Attitude Advisor: yellow when the city celebrates, red when it is in disorder. |
-| `RadioHotkeys` | Options in dialogs get a keyboard shortcut: a letter of the option's name, shown underlined. |
+| `RadioHotkeys` | Options in dialogs get a keyboard shortcut: a letter of the option's name (underlined only with `HotkeyUnderlines`). |
 | `Quickinfo` | Hold Ctrl with the pointer over a map square to see details of the city and units there. |
 | `ProductionCancel` | The city's Change Production dialog gets a Cancel button; Escape cancels too. |
 | `ProductionCost` | The Change Production list shows what each item costs in shields, and each building's upkeep. |
@@ -55,6 +55,7 @@ effect the next time the game starts.
 | `PathLines` | Hold Shift with the pointer over the map to see the path the active unit would take there, based on the map as you know it (units and cities you can't see aren't counted). With a city selected (View Pieces, the cursor on it), hold Shift over the same city to see lines to the cities it has trade routes with, or over another city to see the way a road or railroad must take to give their trade routes the road bonus (the game looks for it along this way only, up to the other city or one of your cities on the way): yellow if the road is already there and gives the bonus, white if not. |
 | `SentryHalftone` | Units on sentry, and aircraft at a base, are drawn in grey shades so you can still tell what they are, instead of as a flat grey shape. |
 | `DefaultZoom1` | A new game (or a save without a saved window layout) starts with the map at normal 1:1 zoom, whatever the screen size. |
+| `HotkeyUnderlines` | Off by default: the hotkey letters `RadioHotkeys` gives options are underlined, as in the original's Windows dialogs. Off, the letters still work, only the line under them is not drawn. |
 
 ## File dialogs
 

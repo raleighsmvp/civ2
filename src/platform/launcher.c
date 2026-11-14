@@ -77,6 +77,7 @@ static const struct { const char *key, *label; } extras[] = {
     {"ColorCorrection", "Colour correction"}, {"ForeignGold", "Gold in Foreign Minister"},
     {"ArrangeWindowsSL", "Arrange Windows S and L"}, {"PathLines", "Path lines with Shift"},
     {"SentryHalftone", "Sentries in grey shades"}, {"DefaultZoom1", "New games at zoom 1:1"},
+    {"HotkeyUnderlines", "Underline options' hotkeys"},
 };
 #define NEXTRAS ((int)(sizeof extras / sizeof extras[0]))
 
@@ -166,7 +167,7 @@ static void read_choices(Choices *c)
     for (i = 0; i < NRULES; i++)
         c->rule[i] = get_int(rules[i].key, 0) != 0;
     for (i = 0; i < NEXTRAS; i++)
-        c->extra[i] = get_int(extras[i].key, 1) != 0;
+        c->extra[i] = get_int(extras[i].key, strcmp(extras[i].key, "HotkeyUnderlines") != 0) != 0;
     /* the limits in force: the original's while off (0 or none) */
     year = get_int("RetirementYear", 0);
     if (year <= 0)
@@ -623,8 +624,9 @@ static void build(void)
         "OpenCiv2's additions to the interface (after FoxAhead's CIV2UIA): what you see and do.")->small = 1;
     y += 24;
     for (i = 0; i < NEXTRAS; i++)
-        add_check(PAGE_UI, i < 12 ? x : x + 270, y + (i % 12) * 18, 260, extras[i].label, NULL, &now.extra[i]);
-    y += 12 * 18 + 6;
+        add_check(PAGE_UI, i < 13 ? x : x + 270, y + (i < 13 ? i : i - 13) * 18, 260, extras[i].label, NULL,
+                  &now.extra[i]);
+    y += 13 * 18 + 4;
     for (i = 0; i < C_SUPPRESS; i++)
         add_field(PAGE_UI, x + i * 180, y, i ? 80 : 76, 60, colours[i].label, now.colour[i], 16);
     add_field(PAGE_UI, x, y + 26, 180, 356, colours[C_SUPPRESS].label, now.colour[C_SUPPRESS], 256);

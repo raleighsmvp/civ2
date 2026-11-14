@@ -82,7 +82,7 @@ export function readChoices(spec, ini) {
     if (c.density < 0 || c.density > 4)
         c.density = 0;
     c.rule = spec.rules.map((r) => getInt(r.key, 0) !== 0);
-    c.extra = spec.extras.map((x) => getInt(x.key, 1) !== 0);
+    c.extra = spec.extras.map((x) => getInt(x.key, x.key === 'HotkeyUnderlines' ? 0 : 1) !== 0);
     let year = getInt('RetirementYear', 0);
     if (year <= 0)
         year = spec.limits[0].original;

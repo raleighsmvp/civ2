@@ -55,6 +55,7 @@ enum {
     X_PATH_LINES = 39,      /* PathLines: trade roads and unit paths with Shift */
     X_SENTRY_GREY = 41,     /* SentryHalftone */
     X_ZOOM_1 = 43,          /* DefaultZoom1: new games at zoom 1:1 */
+    X_HOTKEY_LINES = 44,    /* HotkeyUnderlines: options' hotkey letters underlined (off by default) */
     /* Rule changes (extra_rule): off unless switched on in CIV.INI */
     X_WORKER_HANDOVER = 17, /* WorkerHandover: the worker already there stops */
     X_GOTO_ZOC = 18,        /* GotoNoZocStop: Go To does not stop next to foreign units */

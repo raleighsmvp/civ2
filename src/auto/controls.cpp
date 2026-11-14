@@ -4070,6 +4070,11 @@ static void radiogrp_item_underline_hotkey(HDC hdc,RadioItem *item,tagRECT *rect
   tagRECT text_rect;
   char prefix[128];
 
+  /* (port) the options' hotkey letters not underlined with RadioHotkeys
+     unless HotkeyUnderlines (X44); the keys still work */
+  if (extra_ui(X_RADIO_KEYS) && !extra_ui(X_HOTKEY_LINES)) {
+    return;
+  }
   if (item->hotkey_pos != -1) {
     crt_strcpy(prefix,item->label);
     prefix[item->hotkey_pos] = '\0';
