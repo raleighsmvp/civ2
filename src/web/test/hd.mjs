@@ -1,12 +1,13 @@
 // The browser version's HD graphics (docs/BROWSER.md): build/web in Chrome's
 // headless shell (as smoke.mjs), the game's files given as a .zip, then on
-// the set-up page the art chosen as the player chooses it once downloaded
-// (the release's .zip from the cache of tools/fetch_hd_pack.py, else
+// the set-up page HD graphics ticked: the download fails (the site has no
+// art, GitHub's release no CORS), then the art chosen as the page then
+// offers (the release's .zip from the cache of tools/fetch_hd_pack.py, else
 // data/native/hd/atlas-hd.pack: make hd; nothing downloaded here): checked,
 // kept in IndexedDB, HD graphics switched on in CIV.INI; then the game at a
 // device pixel ratio of 2 (density Auto: 2), the menu and a saved game's map
 // drawn in HD (the canvas twice the desktop's size, and not the desktop's
-// pixels enlarged), the menu bar's text sharp from the first screen; then
+// pixels enlarged), the first screen's text sharp; then
 // ?hd=0: sharp text and interface (on by default) without the art; then
 // ?hd=0&sharp=0: the original graphics.  Screenshots in
 // run/web-hd (look at them).  Without the art (or the game) it says so and
@@ -172,9 +173,22 @@ async function main() {
         if (await evaluate('document.getElementById("opt-hd").checked'))
             throw new Error('HD graphics on before the art');
         log('art: ' + await evaluate('document.getElementById("art-status").textContent'));
-        // the art chosen (the release's .zip, or the pack alone): checked, kept
+        // HD graphics ticked: the download starts at once; the site has no
+        // art of its own (make web without HD=1) and GitHub's release lets
+        // no page fetch it, so it fails, and only then the page offers the
+        // release's .zip, chosen here (or the pack alone): checked, kept
+        if (!await evaluate('document.getElementById("art-fallback").hidden'))
+            throw new Error('the .zip offered before a download failed');
+        await evaluate('document.getElementById("opt-hd").click()');
+        await waitFor('!document.getElementById("art-fallback").hidden || ' +
+                      '/kept in this browser/.test(document.getElementById("art-status").textContent)', 600000,
+                      'the download');
+        log('download: ' + await evaluate('document.getElementById("art-status").textContent'));
+        await evaluate('document.getElementById("opt-hd").scrollIntoView()');
+        await shot('00-setup-fallback');
         const t0 = performance.now();
-        await input('art-file', [art]);
+        if (!await evaluate('document.getElementById("art-fallback").hidden'))
+            await input('art-file', [art]);
         await waitFor('/kept in this browser|stay off/.test(document.getElementById("art-status").textContent) && ' +
                       'document.getElementById("art-bar").hidden', 600000, 'the art');
         const said = await evaluate('document.getElementById("art-status").textContent');

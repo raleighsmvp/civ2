@@ -316,7 +316,7 @@ async function artInfo(store) {
 }
 
 const opt = {store: null, spec: null, ini: null, was: null, now: null, art: null, fetching: null, message: '',
-             cors: false, built: false};
+             built: false};
 
 function optionsRender() {
     const {now, spec} = opt;
@@ -336,10 +336,12 @@ function optionsRender() {
     const f = opt.fetching, status = $('art-status');
     $('art-stop').hidden = !f;
     $('art-bar').hidden = !f;
-    $('art-download').hidden = !!f || !!opt.art;
-    $('art-download').disabled = now.classic;
-    for (const l of document.querySelectorAll('#art label.button'))
-        l.hidden = !!f || !!opt.art;
+    // (only once the download failed: the release's .zip, chosen here)
+    $('art-fallback').hidden = !!f || !!opt.art || !opt.message || now.classic;
+    if (opt.pinned) {
+        $('art-link').href = opt.pinned.url;
+        $('art-link').textContent = `the release's .zip (${MB(opt.pinned.size)} MB)`;
+    }
     $('art-remove').hidden = !!f || !opt.art;
     status.style.color = '';
     if (f) {
@@ -352,17 +354,9 @@ function optionsRender() {
     } else if (opt.message) {
         status.style.color = '#e07a6a';
         status.textContent = opt.message + ' HD graphics stay off.';
-        if (opt.cors) {
-            status.append(' Download it from ');
-            const a = document.createElement('a');
-            a.href = opt.pinned.url;
-            a.textContent = 'GitHub';
-            a.style.color = 'var(--accent)';
-            status.append(a, ` (${MB(opt.pinned.size)} MB, the .zip), then choose it here.`);
-        }
     } else {
         status.textContent = `HD graphics need the art: ${MB(opt.pinned ? opt.pinned.size : 234081955)} MB, ` +
-            'downloaded once from openciv2-assets on GitHub (or the .zip chosen here, once downloaded).';
+            'downloaded once when ticked.';
     }
 }
 
@@ -388,7 +382,6 @@ async function getArt(blob) {
     };
     opt.fetching = {phase: 'download', done: 0, total: 0};
     opt.message = '';
-    opt.cors = false;
     $('art-stop').onclick = () => ac.abort();
     optionsRender();
     try {
@@ -409,7 +402,6 @@ async function getArt(blob) {
             console.error(e);
         opt.message = e.name === 'AbortError' ? 'Stopped.' : e.message.replace(/^./, (c) => c.toUpperCase()) +
             (/[.)]$/.test(e.message) ? '' : '.');
-        opt.cors = !!e.cors;
         opt.now.hd = false;
         // (a pack only partly kept: none)
         opt.art = await artInfo(opt.store).catch(() => null);
@@ -419,12 +411,6 @@ async function getArt(blob) {
     opt.fetching = null;
     optionsChanged();
     status(opt.art ? 'The HD graphics\' art is kept in this browser.' : 'HD graphics: ' + opt.message);
-}
-
-// the art among files chosen (a folder): atlas-hd.pack, or the release's .zip
-function artAmong(files) {
-    return files.find((f) => /(^|\/)atlas-hd\.pack$/i.test(f.webkitRelativePath || f.name)) ||
-        files.find((f) => /openciv2-assets.*\.zip$/i.test(f.name)) || files.find((f) => /\.zip$/i.test(f.name));
 }
 
 async function showOptions(store) {
@@ -514,22 +500,11 @@ async function showOptions(store) {
             if (opt.now.hd && !opt.art && !opt.fetching)
                 getArt((signal, progress) => download(opt.pinned, {signal, progress}));
         };
-        $('art-download').onclick = () => getArt((signal, progress) => download(opt.pinned, {signal, progress}));
         $('art-file').onchange = (e) => {
             const f = e.target.files[0];
             e.target.value = '';
             if (f)
                 getArt(async () => f);
-        };
-        $('art-folder').onchange = (e) => {
-            const f = artAmong([...e.target.files]);
-            e.target.value = '';
-            if (f)
-                getArt(async () => f);
-            else {
-                opt.message = 'That folder has neither atlas-hd.pack nor the art\'s .zip.';
-                optionsRender();
-            }
         };
         $('art-remove').onclick = async () => {
             await store.hdClear();
