@@ -20,8 +20,11 @@ function req(r) {
     });
 }
 
-export async function openStore() {
+// onBlocked: another tab of this site holds an older version of the store
+// open (its page from before an update), so the upgrade waits for it
+export async function openStore(onBlocked) {
     const open = indexedDB.open(DB, 3);
+    open.onblocked = () => onBlocked && onBlocked();
     open.onupgradeneeded = (e) => {
         if (e.oldVersion < 1)
             open.result.createObjectStore(FILES);
@@ -31,6 +34,8 @@ export async function openStore() {
             open.result.createObjectStore(HD);
     };
     const db = await req(open);
+    // (a newer page in another tab upgrades the store: this one lets it)
+    db.onversionchange = () => db.close();
     const tx = (mode) => db.transaction(FILES, mode).objectStore(FILES);
     const done = (t) => new Promise((resolve, reject) => {
         t.oncomplete = () => resolve();

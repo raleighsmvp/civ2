@@ -647,7 +647,8 @@ async function main() {
         status('This browser lacks what the game needs (WebAssembly, IndexedDB, DecompressionStream).');
         return;
     }
-    const store = await openStore();
+    const store = await openStore(() =>
+        status('Waiting for another OpenCiv2 tab (from before an update) to close: close it, or reload it.'));
     savesControls(store);
     $('relay').value = relayAddress();
     $('relay').onchange = () => {
